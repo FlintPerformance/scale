@@ -76,8 +76,8 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex h-7">
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] nav-extend-bottom">
+        <div className="flex" style={{ height: '28px' }}>
           {NAV.map(({ id, Icon }) => (
             <button
               key={id}
