@@ -149,10 +149,20 @@ export default function Circle() {
       });
       if (memberErr) throw memberErr;
 
+      // Optimistically add to state so UI updates immediately
+      setCircles(prev => [...prev, { ...circle, role: 'owner' }]);
+      setMembers(prev => [...prev, {
+        user_id: user.id,
+        circle_id: circle.id,
+        role: 'owner',
+        profiles: { display_name: displayName, avatar_url: null }
+      }]);
       showToast('Circle created!');
       setCircleName('');
       setShowCreate(false);
-      await loadCircleData();
+      setTab('circles');
+      // Refresh in background for full data
+      loadCircleData();
     } catch (err) {
       showToast(err.message, 'error');
     }
