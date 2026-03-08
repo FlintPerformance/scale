@@ -5,6 +5,7 @@ import { useNavigation } from './hooks/useNavigation';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncData, pullFromCloud } from './sync';
 import AuthView from './views/AuthView';
+import Onboarding from './views/Onboarding';
 import Dashboard from './views/Dashboard';
 import LogWeight from './views/LogWeight';
 import History from './views/History';
@@ -32,6 +33,22 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState(null);
   const [unit, setUnit] = useState(() => localStorage.getItem('scale-unit') || 'lb');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Show onboarding for new users who haven't completed it and have no weight data
+  const checkOnboarding = useCallback(() => {
+    if (user && data.loaded && data.weights.length === 0 && !localStorage.getItem('scale-onboarding-done')) {
+      setShowOnboarding(true);
+    }
+  }, [user, data.loaded, data.weights.length]);
+
+  // Run check when data loads
+  React.useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
+
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem('scale-onboarding-done', '1');
+    setShowOnboarding(false);
+  }, []);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -118,6 +135,17 @@ export default function App() {
       default: return <Dashboard />;
     }
   };
+
+  if (showOnboarding) {
+    return (
+      <AppDataContext.Provider value={dataValue}>
+        <AppActionsContext.Provider value={actionsValue}>
+          <Onboarding onComplete={completeOnboarding} />
+          {toast && <Toast message={toast.message} type={toast.type} />}
+        </AppActionsContext.Provider>
+      </AppDataContext.Provider>
+    );
+  }
 
   return (
     <AppDataContext.Provider value={dataValue}>
