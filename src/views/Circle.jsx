@@ -26,6 +26,7 @@ export default function Circle() {
   const [joinCode, setJoinCode] = useState('');
   const [reactions, setReactions] = useState({});
   const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const [selectedCircle, setSelectedCircle] = useState(null); // null = All Circles
 
   const loadCircleData = useCallback(async () => {
     setLoading(true);
@@ -249,15 +250,28 @@ export default function Circle() {
     }
   };
 
+  // Filter members and feed by selected circle
+  const filteredMembers = useMemo(() => {
+    if (!selectedCircle) return members;
+    return members.filter(m => m.circle_id === selectedCircle);
+  }, [members, selectedCircle]);
+
+  const filteredFeed = useMemo(() => {
+    if (!selectedCircle) return feed;
+    const circleMemberIds = new Set(filteredMembers.map(m => m.user_id));
+    return feed.filter(f => circleMemberIds.has(f.user_id));
+  }, [feed, selectedCircle, filteredMembers]);
+
   // Compute per-member stats for the Members tab
   const memberStats = useMemo(() => {
-    let unique = members.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
+    let unique = filteredMembers.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
     // Ensure current user always appears in member list
-    if (circles.length > 0 && !unique.some(m => m.user_id === user.id)) {
+    const activeCircles = selectedCircle ? circles.filter(c => c.id === selectedCircle) : circles;
+    if (activeCircles.length > 0 && !unique.some(m => m.user_id === user.id)) {
       unique = [...unique, {
         user_id: user.id,
-        circle_id: circles[0].id,
-        role: circles[0].role || 'member',
+        circle_id: activeCircles[0].id,
+        role: activeCircles[0].role || 'member',
         profiles: { display_name: displayName, avatar_url: null }
       }];
     }
@@ -266,7 +280,7 @@ export default function Circle() {
     const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
     return unique.map(member => {
-      const allWeights = feed.filter(f => f.user_id === member.user_id);
+      const allWeights = filteredFeed.filter(f => f.user_id === member.user_id);
       const latest = allWeights[0];
       const streak = getStreak(allWeights);
       const totalEntries = allWeights.length;
@@ -291,7 +305,7 @@ export default function Circle() {
         isYou: member.user_id === user.id,
       };
     }).sort((a, b) => b.streak - a.streak); // Sort by streak
-  }, [members, feed, user.id, circles, displayName]);
+  }, [filteredMembers, filteredFeed, user.id, circles, selectedCircle, displayName]);
 
   if (loading) {
     return (
@@ -369,6 +383,23 @@ export default function Circle() {
         </div>
       ) : (
         <>
+          {/* Circle Picker */}
+          {circles.length > 1 && (
+            <div className="mb-3">
+              <select
+                value={selectedCircle || ''}
+                onChange={e => setSelectedCircle(e.target.value || null)}
+                className="w-full bg-surface-up border border-white/10 text-cream text-sm rounded-sm px-3 py-2 appearance-none cursor-pointer hover:border-accent/30 transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+              >
+                <option value="">All Circles</option>
+                {circles.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Tab Bar */}
           <div className="flex gap-1 bg-surface-up rounded-sm p-0.5 mb-4">
             {[['feed', 'Feed'], ['members', 'Members'], ['circles', 'Circles']].map(([id, label]) => (
@@ -387,10 +418,10 @@ export default function Circle() {
           {/* Feed Tab */}
           {tab === 'feed' && (
             <div className="space-y-3 desktop:grid desktop:grid-cols-2 desktop:gap-3 desktop:space-y-0">
-              {feed.length === 0 ? (
+              {filteredFeed.length === 0 ? (
                 <p className="text-cream/40 text-center py-8 text-sm desktop:col-span-2">No entries shared yet. Log your weight and it will appear here!</p>
               ) : (
-                feed.map(entry => {
+                filteredFeed.map(entry => {
                   const entryReactions = reactions[entry.id] || [];
                   const groupedReactions = {};
                   entryReactions.forEach(r => {
