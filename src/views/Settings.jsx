@@ -3,15 +3,15 @@ import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
 import { exportAllDB, importAllDB, clearAllDB } from '../db';
 import Avatar from '../components/Avatar';
-import { getNotifPrefs, saveNotifPrefs, requestPermission, getPermissionStatus, isNotificationSupported } from '../notifications';
+import { subscribeToPush, unsubscribeFromPush, isPushSupported } from '../notifications';
 
 export default function Settings() {
   const { user, displayName, unit, syncing } = useAppData();
   const { signOut, sync, changeUnit, showToast, reload } = useAppActions();
   const [confirmClear, setConfirmClear] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
-  const [notifPrefs, setNotifPrefs] = useState(getNotifPrefs);
-  const [permissionStatus, setPermissionStatus] = useState(getPermissionStatus);
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem('scale-push-enabled') === '1');
+  const [pushLoading, setPushLoading] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -94,31 +94,33 @@ export default function Settings() {
     input.click();
   };
 
-  const handleToggleNotifications = async () => {
-    if (!notifPrefs.enabled) {
-      const result = await requestPermission();
-      setPermissionStatus(result);
-      if (result !== 'granted') {
-        showToast('Notification permission denied', 'error');
-        return;
-      }
-      const updated = { ...notifPrefs, enabled: true };
-      setNotifPrefs(updated);
-      saveNotifPrefs(updated);
-      showToast('Notifications enabled');
-    } else {
-      const updated = { ...notifPrefs, enabled: false };
-      setNotifPrefs(updated);
-      saveNotifPrefs(updated);
-      showToast('Notifications disabled');
+  async function enableNotifications() {
+    setPushLoading(true);
+    try {
+      await subscribeToPush(user.id);
+      setPushEnabled(true);
+      localStorage.setItem('scale-push-enabled', '1');
+      showToast('Reminders enabled');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setPushLoading(false);
     }
-  };
+  }
 
-  const updateNotifPref = (key, value) => {
-    const updated = { ...notifPrefs, [key]: value };
-    setNotifPrefs(updated);
-    saveNotifPrefs(updated);
-  };
+  async function disableNotifications() {
+    setPushLoading(true);
+    try {
+      await unsubscribeFromPush(user.id);
+      setPushEnabled(false);
+      localStorage.removeItem('scale-push-enabled');
+      showToast('Reminders disabled');
+    } catch (err) {
+      showToast('Failed to disable notifications: ' + err.message, 'error');
+    } finally {
+      setPushLoading(false);
+    }
+  }
 
   const handleClear = async () => {
     await clearAllDB();
@@ -183,71 +185,39 @@ export default function Settings() {
       </div>
 
       {/* Notifications */}
-      {isNotificationSupported() && (
-        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 mt-0 desktop:mt-4">
-          <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Notifications</p>
-
-          {permissionStatus === 'denied' && (
-            <p className="text-cream/40 text-xs mb-3">Notifications are blocked. Enable them in your browser settings.</p>
-          )}
-
-          {/* Master toggle */}
-          <label className="flex items-center justify-between cursor-pointer select-none mb-3">
-            <span className="text-cream text-sm">Enable notifications</span>
-            <div className="relative" onClick={handleToggleNotifications}>
-              <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.enabled ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
-              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.enabled ? 'translate-x-4' : ''}`} />
-            </div>
-          </label>
-
-          {notifPrefs.enabled && (
-            <div className="space-y-3 border-t border-white/5 pt-3">
-              {/* Daily reminder */}
-              <label className="flex items-center justify-between cursor-pointer select-none">
-                <span className="text-cream/70 text-sm">Daily weigh-in reminder</span>
-                <div className="relative" onClick={() => updateNotifPref('dailyReminder', !notifPrefs.dailyReminder)}>
-                  <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.dailyReminder ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
-                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.dailyReminder ? 'translate-x-4' : ''}`} />
-                </div>
-              </label>
-
-              {notifPrefs.dailyReminder && (
-                <div className="flex items-center justify-between">
-                  <span className="text-cream/40 text-xs">Reminder time</span>
-                  <input
-                    type="time"
-                    value={notifPrefs.dailyTime}
-                    onChange={e => updateNotifPref('dailyTime', e.target.value)}
-                    className="bg-surface-up border border-white/10 rounded-sm px-2 py-1 text-cream text-xs"
-                  />
-                </div>
-              )}
-
-              {/* Weekly progress */}
-              <label className="flex items-center justify-between cursor-pointer select-none">
-                <span className="text-cream/70 text-sm">Weekly progress summary</span>
-                <div className="relative" onClick={() => updateNotifPref('weeklyProgress', !notifPrefs.weeklyProgress)}>
-                  <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.weeklyProgress ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
-                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.weeklyProgress ? 'translate-x-4' : ''}`} />
-                </div>
-              </label>
-
-              {notifPrefs.weeklyProgress && (
-                <div className="flex items-center justify-between">
-                  <span className="text-cream/40 text-xs">Summary day</span>
-                  <select
-                    value={notifPrefs.weeklyDay}
-                    onChange={e => updateNotifPref('weeklyDay', Number(e.target.value))}
-                    className="bg-surface-up border border-white/10 rounded-sm px-2 py-1 text-cream text-xs"
-                  >
-                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
-                      <option key={i} value={i}>{d}</option>
-                    ))}
-                  </select>
-                </div>
+      {isPushSupported() && (
+        <div className="bg-surface-mid rounded-sm p-5 border border-white/5 mb-4 mt-0 desktop:mt-4">
+          <div className="flex items-start gap-4">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 mt-0.5 flex-shrink-0">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 01-3.46 0" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-cream mb-1">Weight Reminders</h3>
+              <p className="text-xs text-cream/40 mb-3">
+                {pushEnabled
+                  ? 'Reminders are active. You will get a daily reminder to log your weight and a weekly progress summary — even when the app is closed.'
+                  : 'Get daily reminders to log your weight and weekly progress summaries. Works even when the app is closed.'}
+              </p>
+              {pushEnabled ? (
+                <button
+                  onClick={disableNotifications}
+                  disabled={pushLoading}
+                  className="px-4 py-2 border border-white/5 text-cream/50 hover:text-cream disabled:opacity-50 text-sm rounded-sm transition-colors"
+                >
+                  {pushLoading ? 'Wait...' : 'Disable Reminders'}
+                </button>
+              ) : (
+                <button
+                  onClick={enableNotifications}
+                  disabled={pushLoading}
+                  className="px-4 py-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors"
+                >
+                  {pushLoading ? 'Setting up...' : 'Enable Reminders'}
+                </button>
               )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
