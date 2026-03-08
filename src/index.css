@@ -30,7 +30,7 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.safe-bottom-compact { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-bottom-compact { padding-bottom: 0px; }
 .safe-top { padding-top: env(safe-area-inset-top, 0px); }
 
 input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
