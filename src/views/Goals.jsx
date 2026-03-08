@@ -59,7 +59,7 @@ export default function Goals() {
               <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
                 <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
                 <circle
-                  cx="50" cy="50" r="42" fill="none" stroke="#4f8cff" strokeWidth="8"
+                  cx="50" cy="50" r="42" fill="none" stroke="#f04a0e" strokeWidth="8"
                   strokeLinecap="round"
                   strokeDasharray={`${progress.pct * 2.64} ${264 - progress.pct * 2.64}`}
                 />

@@ -5,20 +5,22 @@ export default {
     extend: {
       colors: {
         surface: {
-          DEFAULT: '#0f1117',
-          mid: '#181a22',
-          up: '#22252f'
+          DEFAULT: '#060606',
+          mid: '#0e0e0e',
+          up: '#161616'
         },
         accent: {
-          DEFAULT: '#4f8cff',
-          light: '#7aadff',
-          dark: '#2a6be0',
-          subtle: 'rgba(79,140,255,0.12)'
+          DEFAULT: '#f04a0e',
+          light: '#ff6122',
+          dark: '#b83a0b',
+          subtle: 'rgba(240,74,14,0.12)'
         },
+        cold: '#b8ccda',
+        muted: '#848484',
         success: '#34d399',
         warning: '#fbbf24',
         danger: '#f87171',
-        cream: '#f0ece4'
+        cream: '#ede8df'
       },
       fontFamily: {
         heading: ['"Barlow Condensed"', 'sans-serif'],

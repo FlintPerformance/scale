@@ -4,8 +4,8 @@
   "description": "Track your bodyweight, set goals, and stay accountable with your circle.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1117",
-  "theme_color": "#0f1117",
+  "background_color": "#060606",
+  "theme_color": "#060606",
   "orientation": "portrait",
   "icons": [
     { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },

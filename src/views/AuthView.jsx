@@ -30,7 +30,7 @@ export default function AuthView() {
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <h1 className="font-display text-6xl text-accent tracking-wider">SCALE.</h1>
+          <h1 className="font-heading font-black text-6xl text-cream tracking-wider">SCALE<span className="text-accent">.</span></h1>
           <p className="text-cream/50 mt-2 font-body text-sm">Track your weight. Stay accountable.</p>
         </div>
 

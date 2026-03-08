@@ -51,17 +51,17 @@ export default function History() {
         <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fill: '#f0ece466', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis domain={['auto', 'auto']} tick={{ fill: '#f0ece466', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
+              <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis domain={['auto', 'auto']} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
               <Tooltip
-                contentStyle={{ background: '#22252f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#f0ece4' }}
+                contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
                 labelFormatter={formatDateShort}
               />
               {activeGoal && (
                 <ReferenceLine y={activeGoal.targetWeight} stroke="#fbbf24" strokeDasharray="6 3" label={{ value: 'Goal', fill: '#fbbf24', fontSize: 10 }} />
               )}
-              <Line type="monotone" dataKey="weight" stroke="#4f8cff" strokeWidth={2} dot={{ r: 2, fill: '#4f8cff' }} activeDot={{ r: 4 }} />
-              <Line type="monotone" dataKey="average" stroke="#34d399" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              <Line type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} dot={{ r: 2, fill: '#f04a0e' }} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

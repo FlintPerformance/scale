@@ -94,32 +94,32 @@ export default function Dashboard() {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4f8cff" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#4f8cff" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#f04a0e" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#f04a0e" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDateShort}
-                tick={{ fill: '#f0ece466', fontSize: 10 }}
+                tick={{ fill: '#ede8df66', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
                 domain={['auto', 'auto']}
-                tick={{ fill: '#f0ece466', fontSize: 10 }}
+                tick={{ fill: '#ede8df66', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={40}
               />
               <Tooltip
-                contentStyle={{ background: '#22252f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#f0ece4' }}
+                contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
                 labelFormatter={formatDateShort}
                 formatter={(v) => [formatWeight(v, unit)]}
               />
-              <Area type="monotone" dataKey="weight" stroke="#4f8cff" strokeWidth={2} fill="url(#weightGrad)" dot={false} />
-              <Area type="monotone" dataKey="average" stroke="#34d399" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
+              <Area type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} fill="url(#weightGrad)" dot={false} />
+              <Area type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-2 justify-center">
@@ -127,7 +127,7 @@ export default function Dashboard() {
               <span className="w-3 h-0.5 bg-accent rounded"></span> Weight
             </span>
             <span className="flex items-center gap-1 text-[10px] text-cream/40">
-              <span className="w-3 h-0.5 bg-success rounded border-dashed"></span> 7d Avg
+              <span className="w-3 h-0.5 bg-cold rounded border-dashed"></span> 7d Avg
             </span>
           </div>
         </div>
