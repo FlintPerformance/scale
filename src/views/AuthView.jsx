@@ -35,84 +35,69 @@ export default function AuthView() {
   };
 
   return (
-    <div className="h-[100dvh] overflow-y-auto bg-surface flex flex-col items-center justify-center px-6 py-12">
+    <div className="h-[100dvh] bg-surface flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         {/* Brand header */}
-        <div className="text-center mb-6">
-          <h1 className="font-logo text-6xl font-black tracking-[0.06em] text-cream">FLINT<span className="text-accent">.</span></h1>
-          <p className="text-[10px] uppercase tracking-[0.32em] text-muted mt-2">Bodyweight Tracker</p>
-          <div className="w-8 h-0.5 bg-accent mx-auto mt-4"></div>
+        <div className="text-center mb-4">
+          <h1 className="font-logo text-5xl font-black tracking-[0.06em] text-cream">FLINT<span className="text-accent">.</span></h1>
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted mt-1">Bodyweight Tracker</p>
         </div>
 
-        {/* Summary */}
-        <p className="text-cream/60 text-center font-body text-sm leading-relaxed mb-6">
-          Your complete toolkit for tracking bodyweight, setting goals, and staying accountable — built for athletes who take their progress seriously.
-        </p>
-
-        {/* Feature list */}
-        <div className="space-y-3 mb-8">
+        {/* Feature list - compact */}
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-5">
           {FEATURES.map((f, i) => (
-            <div key={i} className="flex items-center gap-3">
+            <div key={i} className="flex items-center gap-1.5">
               <f.icon />
-              <span className="text-cream/50 text-sm font-body">{f.text}</span>
+              <span className="text-cream/40 text-xs font-body">{f.text}</span>
             </div>
           ))}
         </div>
 
         {/* Form heading */}
-        <h2 className="font-heading font-bold text-lg text-cream text-center uppercase tracking-wider mb-5">
+        <h2 className="font-heading font-bold text-sm text-cream text-center uppercase tracking-wider mb-3">
           {mode === 'signup' ? 'Create Your Account' : 'Welcome Back'}
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-2.5">
           {mode === 'signup' && (
-            <div>
-              <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Display Name</label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder="Your name"
-                className="w-full"
-              />
-            </div>
+            <input
+              type="text"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              placeholder="Display name"
+              className="w-full"
+            />
           )}
 
-          <div>
-            <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full"
-            />
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Email"
+            required
+            className="w-full"
+          />
 
-          <div>
-            <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Min. 6 characters"
-              required
-              minLength={6}
-              className="w-full"
-            />
-          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Password (min. 6 characters)"
+            required
+            minLength={6}
+            className="w-full"
+          />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-sm transition-colors disabled:opacity-50 text-sm"
+            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3 rounded-sm transition-colors disabled:opacity-50 text-sm"
           >
             {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-cream/40 text-sm">
+        <p className="text-center mt-4 text-cream/40 text-sm">
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
