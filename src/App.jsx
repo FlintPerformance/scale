@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo, lazy,
 import { useAuth } from './hooks/useAuth';
 import { useLocalData } from './hooks/useLocalData';
 import { useNavigation } from './hooks/useNavigation';
+import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncData, pullFromCloud } from './sync';
 import AuthView from './views/AuthView';
 import Dashboard from './views/Dashboard';
@@ -12,6 +13,7 @@ import Circle from './views/Circle';
 import Settings from './views/Settings';
 import BottomNav from './components/BottomNav';
 import Toast from './components/Toast';
+import UpdateBanner from './components/UpdateBanner';
 
 const AppDataContext = createContext(null);
 const AppActionsContext = createContext(null);
@@ -25,6 +27,7 @@ export function useApp() {
 export default function App() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
   const { view, navigate, goBack } = useNavigation('dashboard');
+  const { updateAvailable, applyUpdate } = useUpdateCheck();
   const data = useLocalData(user?.id);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState(null);
@@ -130,6 +133,7 @@ export default function App() {
             </div>
           )}
           <BottomNav />
+          {updateAvailable && <UpdateBanner onUpdate={applyUpdate} />}
           {toast && <Toast message={toast.message} type={toast.type} />}
         </div>
       </AppActionsContext.Provider>

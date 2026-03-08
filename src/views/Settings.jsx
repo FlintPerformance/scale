@@ -186,7 +186,9 @@ export default function Settings() {
         Sign Out
       </button>
 
-      <p className="text-center text-cream/20 text-xs mt-6 mb-4">FLINT. Scale v1.0.0</p>
+      <p className="text-center text-cream/20 text-xs mt-6 mb-4">
+        FLINT. Scale v1.0.0 · Build {typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev'}
+      </p>
     </div>
   );
 }
