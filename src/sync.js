@@ -1,6 +1,22 @@
 import { supabase } from './supabase';
 import * as db from './db';
 
+export async function pushWeightToCloud(entry) {
+  const { error } = await supabase
+    .from('weight_entries')
+    .upsert({
+      id: entry.id,
+      user_id: entry.userId,
+      date: entry.date,
+      weight: entry.weight,
+      unit: entry.unit || 'lb',
+      notes: entry.notes || null,
+      is_morning: entry.isMorning || false,
+      updated_at: new Date(entry.updatedAt).toISOString()
+    });
+  if (error) throw error;
+}
+
 export async function pushToCloud(userId) {
   const data = await db.exportAllDB();
 

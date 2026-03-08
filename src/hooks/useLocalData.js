@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as db from '../db';
+import { pushWeightToCloud } from '../sync';
 import { generateId, todayStr } from '../utils';
 
 export function useLocalData(userId) {
@@ -33,6 +34,7 @@ export function useLocalData(userId) {
       updatedAt: Date.now()
     };
     await db.saveWeight(entry);
+    pushWeightToCloud(entry).catch(() => {});
     await reload();
     return entry;
   }, [userId, reload]);
