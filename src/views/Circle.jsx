@@ -206,7 +206,7 @@ export default function Circle() {
         <h1 className="font-heading text-2xl font-bold text-cream">My Circle</h1>
         <div className="flex gap-2">
           <button onClick={() => { setShowJoin(true); setShowCreate(false); }} className="text-accent text-xs font-medium hover:underline">Join</button>
-          <button onClick={() => { setShowCreate(true); setShowJoin(false); }} className="bg-accent hover:bg-accent-dark text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+          <button onClick={() => { setShowCreate(true); setShowJoin(false); }} className="bg-accent hover:bg-accent-dark text-white px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors">
             + Create
           </button>
         </div>
@@ -214,7 +214,7 @@ export default function Circle() {
 
       {/* Create Circle Form */}
       {showCreate && (
-        <form onSubmit={createCircle} className="bg-surface-mid rounded-xl p-4 border border-white/5 mb-4 animate-slide-up">
+        <form onSubmit={createCircle} className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 animate-slide-up">
           <p className="text-cream text-sm font-medium mb-3">Create a Circle</p>
           <input
             type="text"
@@ -225,7 +225,7 @@ export default function Circle() {
             autoFocus
           />
           <div className="flex gap-2">
-            <button type="submit" className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold">Create</button>
+            <button type="submit" className="bg-accent text-white px-4 py-2 rounded-sm text-sm font-semibold">Create</button>
             <button type="button" onClick={() => setShowCreate(false)} className="text-cream/40 text-sm">Cancel</button>
           </div>
         </form>
@@ -233,7 +233,7 @@ export default function Circle() {
 
       {/* Join Circle Form */}
       {showJoin && (
-        <form onSubmit={joinCircle} className="bg-surface-mid rounded-xl p-4 border border-white/5 mb-4 animate-slide-up">
+        <form onSubmit={joinCircle} className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 animate-slide-up">
           <p className="text-cream text-sm font-medium mb-3">Join a Circle</p>
           <input
             type="text"
@@ -245,22 +245,22 @@ export default function Circle() {
             autoFocus
           />
           <div className="flex gap-2">
-            <button type="submit" className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold">Join</button>
+            <button type="submit" className="bg-accent text-white px-4 py-2 rounded-sm text-sm font-semibold">Join</button>
             <button type="button" onClick={() => setShowJoin(false)} className="text-cream/40 text-sm">Cancel</button>
           </div>
         </form>
       )}
 
       {circles.length === 0 && !showCreate && !showJoin ? (
-        <div className="bg-surface-mid rounded-2xl p-8 border border-white/5 text-center">
+        <div className="bg-surface-mid rounded-sm p-8 border border-white/5 text-center">
           <div className="text-4xl mb-3">👥</div>
           <p className="text-cream font-medium mb-1">No circles yet</p>
           <p className="text-cream/40 text-sm mb-4">Create a circle and invite friends to share progress and stay accountable together.</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => setShowCreate(true)} className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+            <button onClick={() => setShowCreate(true)} className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors">
               Create Circle
             </button>
-            <button onClick={() => setShowJoin(true)} className="bg-surface-up border border-white/10 text-cream px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors hover:border-accent/30">
+            <button onClick={() => setShowJoin(true)} className="bg-surface-up border border-white/10 text-cream px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors hover:border-accent/30">
               Join Circle
             </button>
           </div>
@@ -268,12 +268,12 @@ export default function Circle() {
       ) : (
         <>
           {/* Tab Bar */}
-          <div className="flex gap-1 bg-surface-up rounded-lg p-0.5 mb-4">
+          <div className="flex gap-1 bg-surface-up rounded-sm p-0.5 mb-4">
             {[['feed', 'Feed'], ['members', 'Members'], ['circles', 'Circles']].map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${
+                className={`flex-1 py-2 rounded-sm text-xs font-medium transition-colors ${
                   tab === id ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'
                 }`}
               >
@@ -297,7 +297,7 @@ export default function Circle() {
                   });
 
                   return (
-                    <div key={entry.id} className={`bg-surface-mid rounded-xl p-4 border ${entry.isOwn ? 'border-accent/20' : 'border-white/5'}`}>
+                    <div key={entry.id} className={`bg-surface-mid rounded-sm p-4 border ${entry.isOwn ? 'border-accent/20' : 'border-white/5'}`}>
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Avatar url={entry.avatarUrl} name={entry.displayName} size="sm" />
@@ -343,12 +343,12 @@ export default function Circle() {
                             +
                           </button>
                           {showReactionPicker === entry.id && (
-                            <div className="absolute bottom-full left-0 mb-1 bg-surface-up border border-white/10 rounded-xl p-1.5 flex gap-1 shadow-lg z-10 animate-slide-up">
+                            <div className="absolute bottom-full left-0 mb-1 bg-surface-up border border-white/10 rounded-sm p-1.5 flex gap-1 shadow-lg z-10 animate-slide-up">
                               {REACTIONS.map(r => (
                                 <button
                                   key={r.emoji}
                                   onClick={() => handleReaction(entry.id, r.emoji)}
-                                  className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-lg transition-colors"
+                                  className="w-8 h-8 rounded-sm hover:bg-white/10 flex items-center justify-center text-lg transition-colors"
                                   title={r.label}
                                 >
                                   {r.emoji}
@@ -376,7 +376,7 @@ export default function Circle() {
                 const isYou = member.user_id === user.id;
 
                 return (
-                  <div key={member.user_id} className={`bg-surface-mid rounded-xl p-4 border ${isYou ? 'border-accent/20' : 'border-white/5'}`}>
+                  <div key={member.user_id} className={`bg-surface-mid rounded-sm p-4 border ${isYou ? 'border-accent/20' : 'border-white/5'}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -418,7 +418,7 @@ export default function Circle() {
               {circles.map(circle => {
                 const circleMembers = members.filter(m => m.circle_id === circle.id);
                 return (
-                  <div key={circle.id} className="bg-surface-mid rounded-xl p-4 border border-white/5">
+                  <div key={circle.id} className="bg-surface-mid rounded-sm p-4 border border-white/5">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-cream font-medium">{circle.name}</h3>
                       <span className="text-cream/30 text-xs">{circle.role}</span>

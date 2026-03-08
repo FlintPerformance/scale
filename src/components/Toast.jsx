@@ -5,7 +5,7 @@ export default function Toast({ message, type = 'success' }) {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-slide-up">
-      <div className={`${bg} text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium`}>
+      <div className={`${bg} text-white px-4 py-2 rounded-sm shadow-lg text-sm font-medium`}>
         {message}
       </div>
     </div>

@@ -90,7 +90,7 @@ export default function Onboarding({ onComplete }) {
         ref={containerRef}
       >
         {/* Icon */}
-        <div className="w-20 h-20 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-8">
+        <div className="w-20 h-20 rounded-sm bg-accent/10 border border-accent/20 flex items-center justify-center mb-8">
           <slide.Icon />
         </div>
 
@@ -106,7 +106,7 @@ export default function Onboarding({ onComplete }) {
 
         {/* Hint */}
         {slide.hint && (
-          <div className="mt-4 bg-surface-mid rounded-xl px-4 py-3 border border-white/5 max-w-xs w-full">
+          <div className="mt-4 bg-surface-mid rounded-sm px-4 py-3 border border-white/5 max-w-xs w-full">
             <p className="text-cream/40 text-xs font-body whitespace-pre-line">{slide.hint}</p>
           </div>
         )}
@@ -133,14 +133,14 @@ export default function Onboarding({ onComplete }) {
           {current > 0 && (
             <button
               onClick={() => goTo(current - 1)}
-              className="flex-1 border border-white/10 text-cream/60 font-heading font-bold uppercase tracking-wider py-3.5 rounded-xl transition-colors hover:border-white/20 text-sm"
+              className="flex-1 border border-white/10 text-cream/60 font-heading font-bold uppercase tracking-wider py-3.5 rounded-sm transition-colors hover:border-white/20 text-sm"
             >
               Back
             </button>
           )}
           <button
             onClick={isLast ? onComplete : () => goTo(current + 1)}
-            className="flex-1 bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-xl transition-colors text-sm"
+            className="flex-1 bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-sm transition-colors text-sm"
           >
             {isLast ? "Get Started" : 'Next'}
           </button>

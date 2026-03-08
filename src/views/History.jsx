@@ -66,12 +66,12 @@ export default function History() {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold text-cream">History</h1>
-        <div className="flex gap-1 bg-surface-up rounded-lg p-0.5">
+        <div className="flex gap-1 bg-surface-up rounded-sm p-0.5">
           {[['7', '7d'], ['30', '30d'], ['90', '90d'], ['all', 'All']].map(([val, label]) => (
             <button
               key={val}
               onClick={() => setRange(val)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`px-2.5 py-1 rounded-sm text-xs font-medium transition-colors ${
                 range === val ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'
               }`}
             >
@@ -83,18 +83,18 @@ export default function History() {
 
       {/* Chart */}
       {chartData.length > 1 && (
-        <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4">
+        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4">
           <div className="flex items-center justify-end mb-2">
-            <div className="flex gap-1 bg-surface-up rounded-lg p-0.5">
+            <div className="flex gap-1 bg-surface-up rounded-sm p-0.5">
               <button
                 onClick={() => setChartMode('line')}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'line' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                className={`px-2 py-0.5 rounded-sm text-[10px] font-medium transition-colors ${chartMode === 'line' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
               >
                 Line
               </button>
               <button
                 onClick={() => setChartMode('candle')}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'candle' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                className={`px-2 py-0.5 rounded-sm text-[10px] font-medium transition-colors ${chartMode === 'candle' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
               >
                 Candle
               </button>
@@ -107,7 +107,7 @@ export default function History() {
                 <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis domain={['auto', 'auto']} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
                 <Tooltip
-                  contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                  contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                   labelFormatter={formatDateShort}
                 />
                 {activeGoal && (
@@ -123,7 +123,7 @@ export default function History() {
                 <XAxis dataKey="date" tickFormatter={formatDateShort} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis domain={candleDomain} tick={{ fill: '#ede8df66', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
                 <Tooltip
-                  contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                  contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                   labelFormatter={formatDateShort}
                   formatter={(value, name) => {
                     if (name === 'range') return null;
@@ -149,7 +149,7 @@ export default function History() {
           </div>
         )}
         {filtered.map(entry => (
-          <div key={entry.id} className="bg-surface-mid rounded-xl p-3 border border-white/5 flex items-center justify-between group">
+          <div key={entry.id} className="bg-surface-mid rounded-sm p-3 border border-white/5 flex items-center justify-between group">
             <div className="flex-1">
               <div className="flex items-baseline gap-2">
                 <span className="text-cream font-semibold">{formatWeight(entry.weight, unit)}</span>

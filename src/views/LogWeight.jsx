@@ -47,7 +47,7 @@ export default function LogWeight() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Weight Input */}
-        <div className="bg-surface-mid rounded-2xl p-6 border border-white/5 text-center">
+        <div className="bg-surface-mid rounded-sm p-6 border border-white/5 text-center">
           <label className="block text-cream/50 text-xs uppercase tracking-wider mb-3">Weight ({unit})</label>
           <input
             type="number"
@@ -66,7 +66,7 @@ export default function LogWeight() {
         </div>
 
         {/* Morning Weight Toggle */}
-        <label className="flex items-center gap-3 bg-surface-mid rounded-xl px-4 py-3 border border-white/5 cursor-pointer select-none">
+        <label className="flex items-center gap-3 bg-surface-mid rounded-sm px-4 py-3 border border-white/5 cursor-pointer select-none">
           <div className="relative">
             <input
               type="checkbox"
@@ -120,7 +120,7 @@ export default function LogWeight() {
                 key={offset}
                 type="button"
                 onClick={() => setWeight((lastWeight + offset).toFixed(1))}
-                className="bg-surface-up border border-white/10 rounded-lg px-3 py-1.5 text-cream/70 text-xs hover:border-accent/30 transition-colors"
+                className="bg-surface-up border border-white/10 rounded-sm px-3 py-1.5 text-cream/70 text-xs hover:border-accent/30 transition-colors"
               >
                 {offset > 0 ? '+' : ''}{offset === 0 ? lastWeight.toFixed(1) : offset}
               </button>
@@ -131,7 +131,7 @@ export default function LogWeight() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-accent hover:bg-accent-dark text-white font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-50 text-lg"
+          className="w-full bg-accent hover:bg-accent-dark text-white font-semibold py-3.5 rounded-sm transition-colors disabled:opacity-50 text-lg"
         >
           {saving ? 'Saving...' : 'Save Entry'}
         </button>

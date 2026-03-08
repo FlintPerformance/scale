@@ -76,7 +76,7 @@ export default function Dashboard() {
         </div>
         <button
           onClick={() => navigate('log')}
-          className="bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
+          className="bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-sm font-semibold text-sm transition-colors"
         >
           + Log Weight
         </button>
@@ -87,7 +87,7 @@ export default function Dashboard() {
         {/* Left column */}
         <div>
           {/* Current Weight Card */}
-          <div className="bg-surface-mid rounded-2xl p-5 mb-4 border border-white/5">
+          <div className="bg-surface-mid rounded-sm p-5 mb-4 border border-white/5">
             <p className="text-cream/50 text-xs uppercase tracking-wider mb-1">Current Weight</p>
             {latest ? (
               <div className="flex items-end gap-3">
@@ -105,18 +105,18 @@ export default function Dashboard() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-surface-mid rounded-xl p-3 border border-white/5 text-center">
+            <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
               <p className="text-cream/50 text-[10px] uppercase tracking-wider">Streak</p>
               <p className="font-display text-2xl text-accent">{streak}</p>
               <p className="text-cream/40 text-[10px]">days</p>
             </div>
-            <div className="bg-surface-mid rounded-xl p-3 border border-white/5 text-center">
+            <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
               <p className="text-cream/50 text-[10px] uppercase tracking-wider">Entries</p>
               <p className="font-display text-2xl text-cream">{weights.length}</p>
               <p className="text-cream/40 text-[10px]">total</p>
             </div>
             <div
-              className="bg-surface-mid rounded-xl p-3 border border-white/5 text-center cursor-pointer hover:border-accent/30"
+              className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center cursor-pointer hover:border-accent/30"
               onClick={() => navigate('goals')}
             >
               <p className="text-cream/50 text-[10px] uppercase tracking-wider">Goal</p>
@@ -135,14 +135,14 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => navigate('history')}
-              className="bg-surface-up hover:bg-surface-mid border border-white/5 rounded-xl p-4 text-left transition-colors"
+              className="bg-surface-up hover:bg-surface-mid border border-white/5 rounded-sm p-4 text-left transition-colors"
             >
               <p className="text-cream font-medium text-sm">View History</p>
               <p className="text-cream/40 text-xs mt-1">All your entries</p>
             </button>
             <button
               onClick={() => navigate('circle')}
-              className="bg-surface-up hover:bg-surface-mid border border-white/5 rounded-xl p-4 text-left transition-colors"
+              className="bg-surface-up hover:bg-surface-mid border border-white/5 rounded-sm p-4 text-left transition-colors"
             >
               <p className="text-cream font-medium text-sm">My Circle</p>
               <p className="text-cream/40 text-xs mt-1">Accountability partners</p>
@@ -153,19 +153,19 @@ export default function Dashboard() {
         {/* Right column - Chart */}
         <div>
           {chartData.length > 1 && (
-            <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4 mt-4 desktop:mt-0">
+            <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 mt-4 desktop:mt-0">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-cream/50 text-xs uppercase tracking-wider">Weight Trend</p>
-                <div className="flex gap-1 bg-surface-up rounded-lg p-0.5">
+                <div className="flex gap-1 bg-surface-up rounded-sm p-0.5">
                   <button
                     onClick={() => setChartMode('line')}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'line' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                    className={`px-2 py-0.5 rounded-sm text-[10px] font-medium transition-colors ${chartMode === 'line' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
                   >
                     Line
                   </button>
                   <button
                     onClick={() => setChartMode('candle')}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'candle' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                    className={`px-2 py-0.5 rounded-sm text-[10px] font-medium transition-colors ${chartMode === 'candle' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
                   >
                     Candle
                   </button>
@@ -198,7 +198,7 @@ export default function Dashboard() {
                         width={40}
                       />
                       <Tooltip
-                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                         labelFormatter={formatDateShort}
                         formatter={(v) => [formatWeight(v, unit)]}
                       />
@@ -235,7 +235,7 @@ export default function Dashboard() {
                         width={40}
                       />
                       <Tooltip
-                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                         labelFormatter={formatDateShort}
                         formatter={(value, name) => {
                           if (name === 'range') return null;

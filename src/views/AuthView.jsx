@@ -106,7 +106,7 @@ export default function AuthView() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-xl transition-colors disabled:opacity-50 text-sm"
+            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-sm transition-colors disabled:opacity-50 text-sm"
           >
             {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>

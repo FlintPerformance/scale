@@ -47,7 +47,7 @@ export default function Goals() {
       <h1 className="font-heading text-2xl font-bold text-cream mb-6">Goals</h1>
 
       {activeGoal && progress ? (
-        <div className="bg-surface-mid rounded-2xl p-5 border border-white/5 mb-4">
+        <div className="bg-surface-mid rounded-sm p-5 border border-white/5 mb-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-cream/50 text-xs uppercase tracking-wider">Active Goal</p>
             <button onClick={() => removeGoal(activeGoal.id)} className="text-cream/30 hover:text-danger text-xs">Remove</button>
@@ -83,22 +83,22 @@ export default function Goals() {
 
           {/* Details */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-surface-up rounded-lg p-3">
+            <div className="bg-surface-up rounded-sm p-3">
               <p className="text-cream/40 text-[10px] uppercase">Started at</p>
               <p className="text-cream font-medium">{formatWeight(activeGoal.startWeight, unit)}</p>
             </div>
-            <div className="bg-surface-up rounded-lg p-3">
+            <div className="bg-surface-up rounded-sm p-3">
               <p className="text-cream/40 text-[10px] uppercase">Current</p>
               <p className="text-cream font-medium">{latest ? formatWeight(latest.weight, unit) : '—'}</p>
             </div>
             {progress.daysLeft !== null && (
-              <div className="bg-surface-up rounded-lg p-3">
+              <div className="bg-surface-up rounded-sm p-3">
                 <p className="text-cream/40 text-[10px] uppercase">Days Left</p>
                 <p className="text-cream font-medium">{progress.daysLeft}</p>
               </div>
             )}
             {progress.estDaysRemaining && (
-              <div className="bg-surface-up rounded-lg p-3">
+              <div className="bg-surface-up rounded-sm p-3">
                 <p className="text-cream/40 text-[10px] uppercase">Est. Days to Goal</p>
                 <p className="text-cream font-medium">{progress.estDaysRemaining}</p>
               </div>
@@ -106,12 +106,12 @@ export default function Goals() {
           </div>
         </div>
       ) : (
-        <div className="bg-surface-mid rounded-2xl p-6 border border-white/5 text-center mb-4">
+        <div className="bg-surface-mid rounded-sm p-6 border border-white/5 text-center mb-4">
           <p className="text-cream/50 mb-3">No active goal</p>
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+              className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors"
             >
               Set a Goal
             </button>
@@ -121,7 +121,7 @@ export default function Goals() {
 
       {/* Create Goal Form */}
       {(showForm || (!activeGoal)) && showForm && (
-        <form onSubmit={handleCreate} className="bg-surface-mid rounded-2xl p-5 border border-white/5 space-y-4">
+        <form onSubmit={handleCreate} className="bg-surface-mid rounded-sm p-5 border border-white/5 space-y-4">
           <h2 className="font-heading text-lg font-semibold text-cream">New Goal</h2>
           <div>
             <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Target Weight ({unit})</label>
@@ -145,7 +145,7 @@ export default function Goals() {
             />
           </div>
           <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-accent hover:bg-accent-dark text-white font-semibold py-2.5 rounded-xl transition-colors">
+            <button type="submit" className="flex-1 bg-accent hover:bg-accent-dark text-white font-semibold py-2.5 rounded-sm transition-colors">
               Set Goal
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 text-cream/40 hover:text-cream text-sm">
@@ -161,7 +161,7 @@ export default function Goals() {
           <p className="text-cream/40 text-xs uppercase tracking-wider mb-3">Past Goals</p>
           <div className="space-y-2">
             {goals.filter(g => !g.active).map(g => (
-              <div key={g.id} className="bg-surface-up rounded-xl p-3 border border-white/5 flex justify-between items-center">
+              <div key={g.id} className="bg-surface-up rounded-sm p-3 border border-white/5 flex justify-between items-center">
                 <div>
                   <p className="text-cream/60 text-sm">Target: {formatWeight(g.targetWeight, unit)}</p>
                   <p className="text-cream/30 text-xs">From {formatWeight(g.startWeight, unit)}</p>

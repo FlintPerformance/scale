@@ -103,7 +103,7 @@ export default function Settings() {
       <h1 className="font-heading text-2xl font-bold text-cream mb-6">Settings</h1>
 
       {/* Profile */}
-      <div className="bg-surface-mid rounded-2xl p-5 border border-white/5 mb-4">
+      <div className="bg-surface-mid rounded-sm p-5 border border-white/5 mb-4">
         <div className="flex items-center gap-4">
           <Avatar
             url={avatarUrl}
@@ -123,14 +123,14 @@ export default function Settings() {
       {/* Desktop two-column layout for settings cards */}
       <div className="desktop:grid desktop:grid-cols-2 desktop:gap-4">
         {/* Unit Preference */}
-        <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4 desktop:mb-0">
+        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 desktop:mb-0">
           <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Weight Unit</p>
           <div className="flex gap-2">
             {['lb', 'kg'].map(u => (
               <button
                 key={u}
                 onClick={() => changeUnit(u)}
-                className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+                className={`flex-1 py-2.5 rounded-sm font-semibold text-sm transition-colors ${
                   unit === u ? 'bg-accent text-white' : 'bg-surface-up text-cream/50 border border-white/10 hover:border-accent/30'
                 }`}
               >
@@ -141,12 +141,12 @@ export default function Settings() {
         </div>
 
         {/* Sync */}
-        <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4 desktop:mb-0">
+        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 desktop:mb-0">
           <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Cloud Sync</p>
           <button
             onClick={sync}
             disabled={syncing}
-            className="w-full bg-surface-up border border-white/10 hover:border-accent/30 text-cream py-2.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50"
+            className="w-full bg-surface-up border border-white/10 hover:border-accent/30 text-cream py-2.5 rounded-sm font-medium text-sm transition-colors disabled:opacity-50"
           >
             {syncing ? 'Syncing...' : 'Sync Now'}
           </button>
@@ -154,22 +154,22 @@ export default function Settings() {
       </div>
 
       {/* Data Management */}
-      <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4 mt-0 desktop:mt-4">
+      <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 mt-0 desktop:mt-4">
         <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Data</p>
         <div className="space-y-2">
-          <button onClick={handleExport} className="w-full bg-surface-up border border-white/10 text-cream py-2.5 rounded-xl text-sm hover:border-accent/30 transition-colors">
+          <button onClick={handleExport} className="w-full bg-surface-up border border-white/10 text-cream py-2.5 rounded-sm text-sm hover:border-accent/30 transition-colors">
             Export Data
           </button>
-          <button onClick={handleImport} className="w-full bg-surface-up border border-white/10 text-cream py-2.5 rounded-xl text-sm hover:border-accent/30 transition-colors">
+          <button onClick={handleImport} className="w-full bg-surface-up border border-white/10 text-cream py-2.5 rounded-sm text-sm hover:border-accent/30 transition-colors">
             Import Data
           </button>
           {!confirmClear ? (
-            <button onClick={() => setConfirmClear(true)} className="w-full bg-surface-up border border-white/10 text-danger/60 py-2.5 rounded-xl text-sm hover:border-danger/30 transition-colors">
+            <button onClick={() => setConfirmClear(true)} className="w-full bg-surface-up border border-white/10 text-danger/60 py-2.5 rounded-sm text-sm hover:border-danger/30 transition-colors">
               Clear All Local Data
             </button>
           ) : (
             <div className="flex gap-2">
-              <button onClick={handleClear} className="flex-1 bg-danger text-white py-2.5 rounded-xl text-sm font-semibold">
+              <button onClick={handleClear} className="flex-1 bg-danger text-white py-2.5 rounded-sm text-sm font-semibold">
                 Confirm Clear
               </button>
               <button onClick={() => setConfirmClear(false)} className="px-4 text-cream/40 text-sm">Cancel</button>
@@ -181,7 +181,7 @@ export default function Settings() {
       {/* Sign Out */}
       <button
         onClick={signOut}
-        className="w-full bg-surface-up border border-white/10 text-cream/60 py-3 rounded-xl font-medium text-sm hover:text-cream hover:border-white/20 transition-colors"
+        className="w-full bg-surface-up border border-white/10 text-cream/60 py-3 rounded-sm font-medium text-sm hover:text-cream hover:border-white/20 transition-colors"
       >
         Sign Out
       </button>
