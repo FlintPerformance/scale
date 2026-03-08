@@ -69,7 +69,7 @@ export default function Layout({ children }) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-black">
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-surface">
         <div className="max-w-[1400px] mx-auto px-4 desktop:px-8 py-4 desktop:py-6">
           {children}
         </div>

@@ -35,7 +35,7 @@ export default function AuthView() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-6 py-12">
+    <div className="h-[100dvh] overflow-y-auto bg-surface flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         {/* Brand header */}
         <div className="text-center mb-6">
