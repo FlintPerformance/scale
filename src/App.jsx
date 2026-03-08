@@ -35,8 +35,12 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [pendingInvite, setPendingInvite] = useState(() => {
     const code = new URLSearchParams(window.location.search).get('join');
-    if (code) window.history.replaceState({}, '', window.location.pathname);
-    return code || null;
+    if (code) {
+      sessionStorage.setItem('pending-invite', code);
+      window.history.replaceState({}, '', window.location.pathname);
+      return code;
+    }
+    return sessionStorage.getItem('pending-invite') || null;
   });
 
   // Show onboarding for new users who haven't completed it and have no weight data
@@ -112,7 +116,7 @@ export default function App() {
     sync: handleSync,
     showToast,
     changeUnit,
-    clearPendingInvite: () => setPendingInvite(null)
+    clearPendingInvite: () => { sessionStorage.removeItem('pending-invite'); setPendingInvite(null); }
   }), [navigate, goBack, signUp, signIn, signOut, data, handleSync, showToast, changeUnit]);
 
   if (authLoading) {
