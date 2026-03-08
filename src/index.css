@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+  }
   input, select, textarea {
     @apply bg-surface-up border border-white/10 rounded-sm px-3 py-2.5 text-cream font-body outline-none transition-colors;
   }

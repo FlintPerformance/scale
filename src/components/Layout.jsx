@@ -13,7 +13,7 @@ export default function Layout({ children }) {
   const { navigate } = useAppActions();
 
   return (
-    <div className="fixed inset-0 flex flex-col desktop:flex-row bg-surface overscroll-none">
+    <div className="fixed inset-0 h-[100dvh] flex flex-col desktop:flex-row bg-surface overscroll-none touch-manipulation">
       {/* Desktop Sidebar */}
       <aside className="hidden desktop:flex desktop:flex-col desktop:w-56 desktop:shrink-0 bg-surface-mid border-r border-white/[0.06] z-40">
         <div className="p-5 border-b border-white/[0.06]">
@@ -69,7 +69,7 @@ export default function Layout({ children }) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-black">
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-black">
         <div className="max-w-[1400px] mx-auto px-4 desktop:px-8 py-4 desktop:py-6">
           {children}
         </div>
