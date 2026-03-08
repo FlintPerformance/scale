@@ -15,7 +15,7 @@ export default function Layout({ children }) {
   return (
     <div className="fixed inset-0 flex flex-col desktop:flex-row bg-surface">
       {/* Desktop Sidebar */}
-      <aside className="hidden desktop:flex desktop:flex-col desktop:w-56 desktop:shrink-0 bg-surface border-r border-white/[0.06] z-40">
+      <aside className="hidden desktop:flex desktop:flex-col desktop:w-56 desktop:shrink-0 bg-surface-mid border-r border-white/[0.06] z-40">
         <div className="p-5 border-b border-white/[0.06]">
           <span className="font-logo text-2xl font-black tracking-[0.06em]" aria-label="FLINT. Scale">
             FLINT<span className="text-accent" aria-hidden="true">.</span>
@@ -52,7 +52,7 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Mobile Header */}
-      <header className="desktop:hidden shrink-0 bg-surface border-b border-white/[0.06] safe-top">
+      <header className="desktop:hidden shrink-0 bg-surface-mid border-b border-white/[0.06] safe-top">
         <div className="flex items-center justify-between px-4 h-11">
           <span className="font-logo text-xl font-black tracking-[0.06em]" aria-label="FLINT.">
             FLINT<span className="text-accent" aria-hidden="true">.</span>
@@ -76,15 +76,15 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface border-t border-white/[0.06] safe-bottom-compact">
-        <div className="flex">
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom-compact">
+        <div className="flex h-12">
           {NAV.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => navigate(id)}
               aria-label={label}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center pt-1 pb-0 text-[10px] uppercase tracking-wider transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center text-[10px] uppercase tracking-wider transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
