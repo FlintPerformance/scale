@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppData, useAppActions } from '../App';
 
 const NAV = [
-  { id: 'dashboard', label: 'Home', Icon: HomeIcon },
+  { id: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
   { id: 'log', label: 'Log', Icon: PlusIcon },
   { id: 'history', label: 'History', Icon: ChartIcon },
   { id: 'circle', label: 'Circle', Icon: UsersIcon },
@@ -77,22 +77,22 @@ export default function Layout({ children }) {
 
       {/* Mobile Bottom Nav */}
       <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] nav-extend-bottom">
-        <div className="flex" style={{ height: '36px' }}>
+        <div className="flex" style={{ height: '28px' }}>
           {NAV.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => navigate(id)}
               aria-label={id}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 leading-none transition-colors ${
+              className={`relative flex-1 flex items-center justify-center gap-1 leading-none transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
               {view === id && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full" />
               )}
-              <Icon className="w-5 h-5" />
-              <span className="text-[9px] tracking-wide">{label}</span>
+              <Icon className="w-4 h-4" />
+              <span className="text-[10px]">{label}</span>
             </button>
           ))}
         </div>
@@ -101,11 +101,13 @@ export default function Layout({ children }) {
   );
 }
 
-function HomeIcon({ className }) {
+function DashboardIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
     </svg>
   );
 }
