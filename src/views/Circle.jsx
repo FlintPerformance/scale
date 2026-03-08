@@ -13,8 +13,8 @@ const REACTIONS = [
 ];
 
 export default function Circle() {
-  const { user, unit, weights, displayName } = useAppData();
-  const { showToast } = useAppActions();
+  const { user, unit, weights, displayName, pendingInvite } = useAppData();
+  const { showToast, clearPendingInvite } = useAppActions();
   const [tab, setTab] = useState('feed');
   const [circles, setCircles] = useState([]);
   const [members, setMembers] = useState([]);
@@ -96,6 +96,39 @@ export default function Circle() {
   }, [user.id]);
 
   useEffect(() => { loadCircleData(); }, [loadCircleData]);
+
+  // Auto-join from invite URL
+  useEffect(() => {
+    if (!pendingInvite || loading) return;
+    const autoJoin = async () => {
+      try {
+        const { data: circle, error } = await supabase
+          .from('circles')
+          .select('id')
+          .eq('invite_code', pendingInvite.trim().toUpperCase())
+          .single();
+        if (error || !circle) { showToast('Invalid invite code', 'error'); return; }
+
+        const { error: joinErr } = await supabase.from('circle_members').insert({
+          circle_id: circle.id,
+          user_id: user.id,
+          role: 'member'
+        });
+        if (joinErr) {
+          if (joinErr.code === '23505') showToast('Already in this circle');
+          else throw joinErr;
+        } else {
+          showToast('Joined circle!');
+        }
+        await loadCircleData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        clearPendingInvite();
+      }
+    };
+    autoJoin();
+  }, [pendingInvite, loading, user.id, showToast, clearPendingInvite, loadCircleData]);
 
   const createCircle = async (e) => {
     e.preventDefault();
@@ -447,12 +480,13 @@ export default function Circle() {
                     </div>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(circle.invite_code);
-                        showToast('Invite code copied!');
+                        const url = `${window.location.origin}?join=${circle.invite_code}`;
+                        navigator.clipboard.writeText(url);
+                        showToast('Invite link copied!');
                       }}
                       className="mt-2 text-accent text-xs hover:underline"
                     >
-                      Copy invite code to share
+                      Copy invite link
                     </button>
                   </div>
                 );

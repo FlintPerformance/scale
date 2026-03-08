@@ -33,6 +33,11 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [unit, setUnit] = useState(() => localStorage.getItem('scale-unit') || 'lb');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState(() => {
+    const code = new URLSearchParams(window.location.search).get('join');
+    if (code) window.history.replaceState({}, '', window.location.pathname);
+    return code || null;
+  });
 
   // Show onboarding for new users who haven't completed it and have no weight data
   const checkOnboarding = useCallback(() => {
@@ -43,6 +48,11 @@ export default function App() {
 
   // Run check when data loads
   React.useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
+
+  // Auto-navigate to circle if invite code in URL
+  React.useEffect(() => {
+    if (pendingInvite && user) navigate('circle');
+  }, [pendingInvite, user, navigate]);
 
   const completeOnboarding = useCallback(() => {
     localStorage.setItem('scale-onboarding-done', '1');
@@ -83,8 +93,9 @@ export default function App() {
     loaded: data.loaded,
     syncing,
     unit,
-    view
-  }), [user, displayName, data.weights, data.goals, data.loaded, syncing, unit, view]);
+    view,
+    pendingInvite
+  }), [user, displayName, data.weights, data.goals, data.loaded, syncing, unit, view, pendingInvite]);
 
   const actionsValue = useMemo(() => ({
     navigate,
@@ -100,7 +111,8 @@ export default function App() {
     reload: data.reload,
     sync: handleSync,
     showToast,
-    changeUnit
+    changeUnit,
+    clearPendingInvite: () => setPendingInvite(null)
   }), [navigate, goBack, signUp, signIn, signOut, data, handleSync, showToast, changeUnit]);
 
   if (authLoading) {
