@@ -43,6 +43,24 @@ export default function App() {
     return sessionStorage.getItem('pending-invite') || null;
   });
 
+  // Auto-sync from cloud when user signs in
+  React.useEffect(() => {
+    if (!user || !data.loaded) return;
+    let cancelled = false;
+    (async () => {
+      setSyncing(true);
+      try {
+        await pullFromCloud(user.id);
+        if (!cancelled) await data.reload();
+      } catch (err) {
+        console.error('Auto-sync failed:', err);
+      } finally {
+        if (!cancelled) setSyncing(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, data.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Show onboarding for new users who haven't completed it and have no weight data
   const checkOnboarding = useCallback(() => {
     if (user && data.loaded && data.weights.length === 0 && !localStorage.getItem('scale-onboarding-done')) {
