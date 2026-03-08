@@ -13,7 +13,7 @@ export default function Layout({ children }) {
   const { navigate } = useAppActions();
 
   return (
-    <div className="fixed inset-0 h-[100dvh] flex flex-col desktop:flex-row bg-surface overscroll-none touch-manipulation">
+    <div className="fixed top-0 left-0 right-0 bottom-0 h-[100dvh] flex flex-col desktop:flex-row bg-surface-mid overscroll-none touch-manipulation">
       {/* Desktop Sidebar */}
       <aside className="hidden desktop:flex desktop:flex-col desktop:w-56 desktop:shrink-0 bg-surface-mid border-r border-white/[0.06] z-40">
         <div className="p-5 border-b border-white/[0.06]">
@@ -76,23 +76,22 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom">
-        <div className="flex h-12">
-          {NAV.map(({ id, label, Icon }) => (
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex h-10">
+          {NAV.map(({ id, Icon }) => (
             <button
               key={id}
               onClick={() => navigate(id)}
-              aria-label={label}
+              aria-label={id}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center justify-center text-[10px] uppercase tracking-wider transition-colors ${
+              className={`relative flex-1 flex items-center justify-center transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
               {view === id && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full" />
               )}
-              <Icon className="w-[18px] h-[18px]" />
-              <span className="mt-0.5">{label}</span>
+              <Icon className="w-5 h-5" />
             </button>
           ))}
         </div>
