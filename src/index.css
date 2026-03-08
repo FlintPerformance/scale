@@ -24,3 +24,17 @@
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-bottom-compact { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+.nav-extend-bottom {
+  position: relative;
+}
+.nav-extend-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom, 0px);
+  background: inherit;
+  transform: translateY(100%);
+}

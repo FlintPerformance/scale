@@ -13,7 +13,7 @@ export default function Layout({ children }) {
   const { navigate } = useAppActions();
 
   return (
-    <div className="fixed inset-0 flex flex-col desktop:flex-row bg-surface">
+    <div className="fixed inset-0 flex flex-col desktop:flex-row bg-surface overscroll-none">
       {/* Desktop Sidebar */}
       <aside className="hidden desktop:flex desktop:flex-col desktop:w-56 desktop:shrink-0 bg-surface-mid border-r border-white/[0.06] z-40">
         <div className="p-5 border-b border-white/[0.06]">
@@ -76,7 +76,7 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom-compact">
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom-compact nav-extend-bottom">
         <div className="flex h-12">
           {NAV.map(({ id, label, Icon }) => (
             <button
