@@ -25,6 +25,12 @@
 .safe-bottom-compact { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-top { padding-top: env(safe-area-inset-top, 0px); }
 
+input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: #161616; border-radius: 3px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #f04a0e; margin-top: -7px; cursor: pointer; }
+input[type="range"]::-moz-range-track { height: 6px; background: #161616; border-radius: 3px; border: none; }
+input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #f04a0e; border: none; cursor: pointer; }
+
 .nav-extend-bottom {
   position: relative;
 }

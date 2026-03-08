@@ -111,20 +111,23 @@ export default function LogWeight() {
           </div>
         </div>
 
-        {/* Quick Buttons */}
+        {/* Weight Slider */}
         {lastWeight && (
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-cream/40 text-xs self-center mr-1">Quick:</span>
-            {[-1, -0.5, 0, 0.5, 1].map(offset => (
-              <button
-                key={offset}
-                type="button"
-                onClick={() => setWeight((lastWeight + offset).toFixed(1))}
-                className="bg-surface-up border border-white/10 rounded-sm px-3 py-1.5 text-cream/70 text-xs hover:border-accent/30 transition-colors"
-              >
-                {offset > 0 ? '+' : ''}{offset === 0 ? lastWeight.toFixed(1) : offset}
-              </button>
-            ))}
+          <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
+            <div className="flex justify-between text-xs text-cream/40 mb-2">
+              <span>{(lastWeight - 5).toFixed(1)}</span>
+              <span className="text-cream/60 font-medium">{weight || lastWeight.toFixed(1)} {unit}</span>
+              <span>{(lastWeight + 5).toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              min={(lastWeight - 5).toFixed(1)}
+              max={(lastWeight + 5).toFixed(1)}
+              step="0.1"
+              value={weight || lastWeight}
+              onChange={e => setWeight(Number(e.target.value).toFixed(1))}
+              className="w-full accent-accent h-1.5 bg-surface-up rounded-full appearance-none cursor-pointer slider-thumb"
+            />
           </div>
         )}
 
