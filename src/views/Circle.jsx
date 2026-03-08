@@ -13,7 +13,7 @@ const REACTIONS = [
 ];
 
 export default function Circle() {
-  const { user, unit, weights, displayName, pendingInvite } = useAppData();
+  const { user, unit, weights: localWeights, displayName, pendingInvite } = useAppData();
   const { showToast, clearPendingInvite } = useAppActions();
   const [tab, setTab] = useState('feed');
   const [circles, setCircles] = useState([]);
@@ -82,9 +82,28 @@ export default function Circle() {
         avatarMap[m.user_id] = m.profiles?.avatar_url || null;
       });
 
-      const feedItems = (sharedWeights || []).map(w => ({
+      // Merge local weights for current user that may not be in cloud yet
+      const cloudIds = new Set((sharedWeights || []).map(w => w.id));
+      const localOnly = localWeights
+        .filter(w => !cloudIds.has(w.id))
+        .map(w => ({
+          id: w.id,
+          user_id: user.id,
+          date: w.date,
+          weight: w.weight,
+          unit: w.unit,
+          notes: w.notes,
+          is_morning: w.isMorning || false,
+          updated_at: new Date(w.updatedAt).toISOString()
+        }));
+
+      const allWeights = [...(sharedWeights || []), ...localOnly]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 200);
+
+      const feedItems = allWeights.map(w => ({
         ...w,
-        displayName: profileMap[w.user_id] || 'Unknown',
+        displayName: profileMap[w.user_id] || displayName,
         avatarUrl: avatarMap[w.user_id] || null,
         isOwn: w.user_id === user.id
       }));
@@ -95,7 +114,7 @@ export default function Circle() {
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, localWeights, displayName]);
 
   useEffect(() => { loadCircleData(); }, [loadCircleData]);
 
@@ -232,7 +251,16 @@ export default function Circle() {
 
   // Compute per-member stats for the Members tab
   const memberStats = useMemo(() => {
-    const unique = members.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
+    let unique = members.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
+    // Ensure current user always appears in member list
+    if (circles.length > 0 && !unique.some(m => m.user_id === user.id)) {
+      unique = [...unique, {
+        user_id: user.id,
+        circle_id: circles[0].id,
+        role: circles[0].role || 'member',
+        profiles: { display_name: displayName, avatar_url: null }
+      }];
+    }
     const today = todayStr();
     const d7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -263,7 +291,7 @@ export default function Circle() {
         isYou: member.user_id === user.id,
       };
     }).sort((a, b) => b.streak - a.streak); // Sort by streak
-  }, [members, feed, user.id]);
+  }, [members, feed, user.id, circles, displayName]);
 
   if (loading) {
     return (

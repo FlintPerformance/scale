@@ -34,7 +34,7 @@ export function useLocalData(userId) {
       updatedAt: Date.now()
     };
     await db.saveWeight(entry);
-    pushWeightToCloud(entry).catch(() => {});
+    pushWeightToCloud(entry).catch(err => console.error('Failed to push weight to cloud:', err));
     await reload();
     return entry;
   }, [userId, reload]);
