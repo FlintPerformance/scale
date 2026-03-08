@@ -4,6 +4,7 @@ import { useLocalData } from './hooks/useLocalData';
 import { useNavigation } from './hooks/useNavigation';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
 import { syncData, pullFromCloud } from './sync';
+import { initNotifications } from './notifications';
 import AuthView from './views/AuthView';
 import Onboarding from './views/Onboarding';
 import Dashboard from './views/Dashboard';
@@ -44,6 +45,9 @@ export default function App() {
 
   // Run check when data loads
   React.useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
+
+  // Initialize notifications on app load
+  React.useEffect(() => { initNotifications(); }, []);
 
   const completeOnboarding = useCallback(() => {
     localStorage.setItem('scale-onboarding-done', '1');

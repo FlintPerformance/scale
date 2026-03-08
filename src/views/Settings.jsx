@@ -3,12 +3,15 @@ import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
 import { exportAllDB, importAllDB, clearAllDB } from '../db';
 import Avatar from '../components/Avatar';
+import { getNotifPrefs, saveNotifPrefs, requestPermission, getPermissionStatus, isNotificationSupported } from '../notifications';
 
 export default function Settings() {
   const { user, displayName, unit, syncing } = useAppData();
   const { signOut, sync, changeUnit, showToast, reload } = useAppActions();
   const [confirmClear, setConfirmClear] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [notifPrefs, setNotifPrefs] = useState(getNotifPrefs);
+  const [permissionStatus, setPermissionStatus] = useState(getPermissionStatus);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -91,6 +94,32 @@ export default function Settings() {
     input.click();
   };
 
+  const handleToggleNotifications = async () => {
+    if (!notifPrefs.enabled) {
+      const result = await requestPermission();
+      setPermissionStatus(result);
+      if (result !== 'granted') {
+        showToast('Notification permission denied', 'error');
+        return;
+      }
+      const updated = { ...notifPrefs, enabled: true };
+      setNotifPrefs(updated);
+      saveNotifPrefs(updated);
+      showToast('Notifications enabled');
+    } else {
+      const updated = { ...notifPrefs, enabled: false };
+      setNotifPrefs(updated);
+      saveNotifPrefs(updated);
+      showToast('Notifications disabled');
+    }
+  };
+
+  const updateNotifPref = (key, value) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
+    saveNotifPrefs(updated);
+  };
+
   const handleClear = async () => {
     await clearAllDB();
     await reload();
@@ -152,6 +181,75 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {/* Notifications */}
+      {isNotificationSupported() && (
+        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 mt-0 desktop:mt-4">
+          <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Notifications</p>
+
+          {permissionStatus === 'denied' && (
+            <p className="text-cream/40 text-xs mb-3">Notifications are blocked. Enable them in your browser settings.</p>
+          )}
+
+          {/* Master toggle */}
+          <label className="flex items-center justify-between cursor-pointer select-none mb-3">
+            <span className="text-cream text-sm">Enable notifications</span>
+            <div className="relative" onClick={handleToggleNotifications}>
+              <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.enabled ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.enabled ? 'translate-x-4' : ''}`} />
+            </div>
+          </label>
+
+          {notifPrefs.enabled && (
+            <div className="space-y-3 border-t border-white/5 pt-3">
+              {/* Daily reminder */}
+              <label className="flex items-center justify-between cursor-pointer select-none">
+                <span className="text-cream/70 text-sm">Daily weigh-in reminder</span>
+                <div className="relative" onClick={() => updateNotifPref('dailyReminder', !notifPrefs.dailyReminder)}>
+                  <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.dailyReminder ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.dailyReminder ? 'translate-x-4' : ''}`} />
+                </div>
+              </label>
+
+              {notifPrefs.dailyReminder && (
+                <div className="flex items-center justify-between">
+                  <span className="text-cream/40 text-xs">Reminder time</span>
+                  <input
+                    type="time"
+                    value={notifPrefs.dailyTime}
+                    onChange={e => updateNotifPref('dailyTime', e.target.value)}
+                    className="bg-surface-up border border-white/10 rounded-sm px-2 py-1 text-cream text-xs"
+                  />
+                </div>
+              )}
+
+              {/* Weekly progress */}
+              <label className="flex items-center justify-between cursor-pointer select-none">
+                <span className="text-cream/70 text-sm">Weekly progress summary</span>
+                <div className="relative" onClick={() => updateNotifPref('weeklyProgress', !notifPrefs.weeklyProgress)}>
+                  <div className={`w-9 h-5 rounded-full border transition-colors ${notifPrefs.weeklyProgress ? 'bg-accent border-accent' : 'bg-surface-up border-white/10'}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow transition-transform ${notifPrefs.weeklyProgress ? 'translate-x-4' : ''}`} />
+                </div>
+              </label>
+
+              {notifPrefs.weeklyProgress && (
+                <div className="flex items-center justify-between">
+                  <span className="text-cream/40 text-xs">Summary day</span>
+                  <select
+                    value={notifPrefs.weeklyDay}
+                    onChange={e => updateNotifPref('weeklyDay', Number(e.target.value))}
+                    className="bg-surface-up border border-white/10 rounded-sm px-2 py-1 text-cream text-xs"
+                  >
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
+                      <option key={i} value={i}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Data Management */}
       <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 mt-0 desktop:mt-4">
