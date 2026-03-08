@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
-import { formatWeight, formatDateShort, getWeightChange, getStreak, generateId } from '../utils';
+import { formatWeight, formatDateShort, getWeightChange, getStreak, generateId, todayStr } from '../utils';
 import Avatar from '../components/Avatar';
 
 const REACTIONS = [
@@ -50,14 +50,16 @@ export default function Circle() {
       setMembers(allMembers || []);
 
       const memberIds = [...new Set((allMembers || []).map(m => m.user_id))];
+
+      // Fetch more entries for richer member stats
       const { data: sharedWeights } = await supabase
         .from('weight_entries')
         .select('*')
         .in('user_id', memberIds)
         .order('date', { ascending: false })
-        .limit(50);
+        .limit(200);
 
-      // Load reactions (cheers with emoji type)
+      // Load reactions
       const entryIds = (sharedWeights || []).map(w => w.id);
       if (entryIds.length) {
         const { data: cheerData } = await supabase
@@ -149,20 +151,12 @@ export default function Circle() {
       });
       if (memberErr) throw memberErr;
 
-      // Optimistically add to state so UI updates immediately
-      setCircles(prev => [...prev, { ...circle, role: 'owner' }]);
-      setMembers(prev => [...prev, {
-        user_id: user.id,
-        circle_id: circle.id,
-        role: 'owner',
-        profiles: { display_name: displayName, avatar_url: null }
-      }]);
       showToast('Circle created!');
       setCircleName('');
       setShowCreate(false);
       setTab('circles');
-      // Refresh in background for full data
-      loadCircleData();
+      // Await full reload so creator appears in member list
+      await loadCircleData();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -193,7 +187,7 @@ export default function Circle() {
       showToast('Joined circle!');
       setJoinCode('');
       setShowJoin(false);
-      loadCircleData();
+      await loadCircleData();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -230,11 +224,46 @@ export default function Circle() {
     try {
       await supabase.from('circle_members').delete().eq('circle_id', circleId).eq('user_id', user.id);
       showToast('Left circle');
-      loadCircleData();
+      await loadCircleData();
     } catch (err) {
       showToast(err.message, 'error');
     }
   };
+
+  // Compute per-member stats for the Members tab
+  const memberStats = useMemo(() => {
+    const unique = members.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
+    const today = todayStr();
+    const d7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    return unique.map(member => {
+      const allWeights = feed.filter(f => f.user_id === member.user_id);
+      const latest = allWeights[0];
+      const streak = getStreak(allWeights);
+      const totalEntries = allWeights.length;
+      const last7 = allWeights.filter(w => w.date >= d7);
+      const last30 = allWeights.filter(w => w.date >= d30);
+      const change7 = getWeightChange(last7);
+      const change30 = getWeightChange(last30);
+      const loggedToday = allWeights.some(w => w.date === today);
+
+      // Mini trend: last 7 daily weights for sparkline
+      const recentDays = allWeights.slice(0, 7).reverse();
+
+      return {
+        ...member,
+        latest,
+        streak,
+        totalEntries,
+        change7,
+        change30,
+        loggedToday,
+        recentDays,
+        isYou: member.user_id === user.id,
+      };
+    }).sort((a, b) => b.streak - a.streak); // Sort by streak
+  }, [members, feed, user.id]);
 
   if (loading) {
     return (
@@ -410,50 +439,97 @@ export default function Circle() {
             </div>
           )}
 
-          {/* Members Tab */}
+          {/* Members Tab - Rich Progress Cards */}
           {tab === 'members' && (
-            <div className="space-y-2 desktop:grid desktop:grid-cols-2 desktop:gap-3 desktop:space-y-0">
-              {members.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i).map(member => {
-                const memberWeights = feed.filter(f => f.user_id === member.user_id);
-                const latestWeight = memberWeights[0];
-                const streak = getStreak(memberWeights);
-                const change = getWeightChange(memberWeights.slice(0, 30));
-                const isYou = member.user_id === user.id;
-
-                return (
-                  <div key={member.user_id} className={`bg-surface-mid rounded-sm p-4 border ${isYou ? 'border-accent/20' : 'border-white/5'}`}>
-                    <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              {memberStats.length === 0 ? (
+                <p className="text-cream/40 text-center py-8 text-sm">No members yet.</p>
+              ) : (
+                memberStats.map(member => (
+                  <div key={member.user_id} className={`bg-surface-mid rounded-sm border ${member.isYou ? 'border-accent/20' : 'border-white/5'}`}>
+                    {/* Member header */}
+                    <div className="flex items-center justify-between p-4 pb-3">
                       <div className="flex items-center gap-3">
-                        <Avatar
-                          url={member.profiles?.avatar_url}
-                          name={member.profiles?.display_name || '?'}
-                          size="md"
-                        />
+                        <div className="relative">
+                          <Avatar
+                            url={member.profiles?.avatar_url}
+                            name={member.profiles?.display_name || '?'}
+                            size="md"
+                          />
+                          {member.loggedToday && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-surface-mid" />
+                          )}
+                        </div>
                         <div>
                           <p className="text-cream font-medium text-sm">
                             {member.profiles?.display_name || 'Unknown'}
-                            {isYou && <span className="text-accent/60 ml-1">(you)</span>}
+                            {member.isYou && <span className="text-accent/60 ml-1">(you)</span>}
                           </p>
-                          <div className="flex gap-3 text-[10px] text-cream/40">
-                            <span>🔥 {streak}d streak</span>
-                            {change && (
-                              <span className={change.change < 0 ? 'text-success' : 'text-danger'}>
-                                {change.change > 0 ? '+' : ''}{change.change.toFixed(1)} (30d)
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-cream/30 text-[10px]">
+                            {member.loggedToday ? 'Logged today' : member.latest ? `Last log ${formatDateShort(member.latest.date)}` : 'No entries yet'}
+                          </p>
                         </div>
                       </div>
-                      {latestWeight && (
+                      {member.latest && (
                         <div className="text-right">
-                          <p className="font-display text-xl text-cream">{formatWeight(latestWeight.weight, latestWeight.unit || unit)}</p>
-                          <p className="text-cream/30 text-[10px]">{formatDateShort(latestWeight.date)}</p>
+                          <p className="font-display text-2xl text-cream">{formatWeight(member.latest.weight, member.latest.unit || unit)}</p>
                         </div>
                       )}
                     </div>
+
+                    {/* Stats grid */}
+                    <div className="grid grid-cols-4 gap-px bg-white/5 border-t border-white/5">
+                      <div className="bg-surface-mid p-2.5 text-center">
+                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">Streak</p>
+                        <p className="font-display text-lg text-accent">{member.streak}</p>
+                        <p className="text-cream/30 text-[9px]">days</p>
+                      </div>
+                      <div className="bg-surface-mid p-2.5 text-center">
+                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">Entries</p>
+                        <p className="font-display text-lg text-cream">{member.totalEntries}</p>
+                        <p className="text-cream/30 text-[9px]">total</p>
+                      </div>
+                      <div className="bg-surface-mid p-2.5 text-center">
+                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">7 Day</p>
+                        {member.change7 ? (
+                          <>
+                            <p className={`font-display text-lg ${member.change7.change < 0 ? 'text-success' : member.change7.change > 0 ? 'text-danger' : 'text-cream/50'}`}>
+                              {member.change7.change > 0 ? '+' : ''}{member.change7.change.toFixed(1)}
+                            </p>
+                            <p className="text-cream/30 text-[9px]">{unit}</p>
+                          </>
+                        ) : (
+                          <p className="text-cream/20 text-xs mt-1">--</p>
+                        )}
+                      </div>
+                      <div className="bg-surface-mid p-2.5 text-center">
+                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">30 Day</p>
+                        {member.change30 ? (
+                          <>
+                            <p className={`font-display text-lg ${member.change30.change < 0 ? 'text-success' : member.change30.change > 0 ? 'text-danger' : 'text-cream/50'}`}>
+                              {member.change30.change > 0 ? '+' : ''}{member.change30.change.toFixed(1)}
+                            </p>
+                            <p className="text-cream/30 text-[9px]">{unit}</p>
+                          </>
+                        ) : (
+                          <p className="text-cream/20 text-xs mt-1">--</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mini sparkline trend */}
+                    {member.recentDays.length > 1 && (
+                      <div className="px-4 py-2.5 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-cream/30 text-[9px] uppercase tracking-wider">Recent trend</span>
+                          <span className="text-cream/30 text-[9px]">Last {member.recentDays.length} entries</span>
+                        </div>
+                        <MiniSparkline data={member.recentDays} />
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+                ))
+              )}
             </div>
           )}
 
@@ -505,6 +581,51 @@ export default function Circle() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function MiniSparkline({ data }) {
+  if (!data || data.length < 2) return null;
+  const weights = data.map(d => d.weight);
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = max - min || 1;
+  const h = 32;
+  const w = 100;
+  const step = w / (weights.length - 1);
+
+  const points = weights.map((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const first = weights[0];
+  const last = weights[weights.length - 1];
+  const trending = last < first ? 'text-success' : last > first ? 'text-danger' : 'text-cream/40';
+
+  return (
+    <div className="flex items-center gap-3">
+      <svg viewBox={`0 0 ${w} ${h}`} className="flex-1 h-8" preserveAspectRatio="none">
+        <polyline
+          points={points}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={trending}
+        />
+        {weights.map((v, i) => {
+          const x = i * step;
+          const y = h - ((v - min) / range) * (h - 4) - 2;
+          return <circle key={i} cx={x} cy={y} r="2.5" fill="currentColor" className={trending} />;
+        })}
+      </svg>
+      <div className={`text-xs font-medium ${trending} whitespace-nowrap`}>
+        {last > first ? '+' : ''}{(last - first).toFixed(1)}
+      </div>
     </div>
   );
 }
