@@ -1,13 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 
 const CURRENT_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev';
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-export function useUpdateCheck() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [waitingWorker, setWaitingWorker] = useState(null);
+function applyUpdate(waitingWorker) {
+  if (waitingWorker) {
+    waitingWorker.postMessage('SKIP_WAITING');
+  } else {
+    window.location.reload();
+  }
+}
 
-  // Poll version.json for new builds
+export function useUpdateCheck() {
+  // Poll version.json for new builds — auto-reload when found
   useEffect(() => {
     if (CURRENT_BUILD === 'dev') return;
 
@@ -17,12 +22,11 @@ export function useUpdateCheck() {
         if (!res.ok) return;
         const data = await res.json();
         if (data.build && data.build !== CURRENT_BUILD) {
-          setUpdateAvailable(true);
+          applyUpdate(null);
         }
       } catch {}
     };
 
-    // Check shortly after load, then on interval
     const initialTimeout = setTimeout(checkVersion, 10_000);
     const interval = setInterval(checkVersion, CHECK_INTERVAL);
 
@@ -32,33 +36,28 @@ export function useUpdateCheck() {
     };
   }, []);
 
-  // Listen for service worker updates
+  // Listen for service worker updates — auto-activate
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     const handleControllerChange = () => {
-      // New SW has taken over — reload
       window.location.reload();
     };
 
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
     navigator.serviceWorker.ready.then(registration => {
-      // Check if there's already a waiting worker
       if (registration.waiting) {
-        setWaitingWorker(registration.waiting);
-        setUpdateAvailable(true);
+        applyUpdate(registration.waiting);
       }
 
-      // Listen for new updates
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            setWaitingWorker(newWorker);
-            setUpdateAvailable(true);
+            applyUpdate(newWorker);
           }
         });
       });
@@ -68,15 +67,4 @@ export function useUpdateCheck() {
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
     };
   }, []);
-
-  const applyUpdate = useCallback(() => {
-    if (waitingWorker) {
-      waitingWorker.postMessage('SKIP_WAITING');
-    } else {
-      // No waiting worker — just hard reload
-      window.location.reload();
-    }
-  }, [waitingWorker]);
-
-  return { updateAvailable, currentBuild: CURRENT_BUILD, applyUpdate };
 }

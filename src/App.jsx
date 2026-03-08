@@ -14,7 +14,6 @@ import Circle from './views/Circle';
 import Settings from './views/Settings';
 import Layout from './components/Layout';
 import Toast from './components/Toast';
-import UpdateBanner from './components/UpdateBanner';
 
 const AppDataContext = createContext(null);
 const AppActionsContext = createContext(null);
@@ -28,7 +27,7 @@ export function useApp() {
 export default function App() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
   const { view, navigate, goBack } = useNavigation('dashboard');
-  const { updateAvailable, applyUpdate } = useUpdateCheck();
+  useUpdateCheck();
   const data = useLocalData(user?.id);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState(null);
@@ -161,7 +160,6 @@ export default function App() {
             </div>
           )}
         </Layout>
-        {updateAvailable && <UpdateBanner onUpdate={applyUpdate} />}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </AppActionsContext.Provider>
     </AppDataContext.Provider>
