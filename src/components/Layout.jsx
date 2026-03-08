@@ -84,7 +84,7 @@ export default function Layout({ children }) {
               onClick={() => navigate(id)}
               aria-label={id}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center justify-center leading-none transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-end pb-0.5 leading-none transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
