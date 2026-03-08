@@ -28,6 +28,7 @@ export default function Circle() {
   const [showReactionPicker, setShowReactionPicker] = useState(null);
 
   const loadCircleData = useCallback(async () => {
+    setLoading(true);
     try {
       const { data: memberRows } = await supabase
         .from('circle_members')
@@ -108,16 +109,17 @@ export default function Circle() {
         .single();
       if (error) throw error;
 
-      await supabase.from('circle_members').insert({
+      const { error: memberErr } = await supabase.from('circle_members').insert({
         circle_id: circle.id,
         user_id: user.id,
         role: 'owner'
       });
+      if (memberErr) throw memberErr;
 
       showToast('Circle created!');
       setCircleName('');
       setShowCreate(false);
-      loadCircleData();
+      await loadCircleData();
     } catch (err) {
       showToast(err.message, 'error');
     }
