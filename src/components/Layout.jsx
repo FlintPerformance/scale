@@ -77,7 +77,7 @@ export default function Layout({ children }) {
 
       {/* Mobile Bottom Nav */}
       <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex h-10">
+        <div className="flex h-7">
           {NAV.map(({ id, Icon }) => (
             <button
               key={id}
@@ -91,7 +91,7 @@ export default function Layout({ children }) {
               {view === id && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full" />
               )}
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
             </button>
           ))}
         </div>
