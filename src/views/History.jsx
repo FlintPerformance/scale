@@ -28,7 +28,7 @@ export default function History() {
   };
 
   return (
-    <div className="px-4 pt-6 max-w-lg desktop:max-w-3xl mx-auto">
+    <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold text-cream">History</h1>
         <div className="flex gap-1 bg-surface-up rounded-lg p-0.5">

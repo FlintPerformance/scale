@@ -193,7 +193,7 @@ export default function Circle() {
 
   if (loading) {
     return (
-      <div className="px-4 pt-6 max-w-lg desktop:max-w-3xl mx-auto">
+      <div className="max-w-3xl">
         <h1 className="font-heading text-2xl font-bold text-cream mb-6">My Circle</h1>
         <div className="text-cream/40 text-center py-12 animate-pulse-accent">Loading circles...</div>
       </div>
@@ -201,7 +201,7 @@ export default function Circle() {
   }
 
   return (
-    <div className="px-4 pt-6 max-w-lg desktop:max-w-3xl mx-auto">
+    <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold text-cream">My Circle</h1>
         <div className="flex gap-2">

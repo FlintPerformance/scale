@@ -39,8 +39,8 @@ export default function AuthView() {
       <div className="w-full max-w-sm">
         {/* Brand header */}
         <div className="text-center mb-6">
-          <h1 className="font-heading font-black text-6xl text-cream tracking-wider">FLINT<span className="text-accent">.</span></h1>
-          <p className="text-muted mt-2 font-heading text-xs uppercase tracking-[0.3em]">Bodyweight Tracker</p>
+          <h1 className="font-logo text-6xl font-black tracking-[0.06em] text-cream">FLINT<span className="text-accent">.</span></h1>
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted mt-2">Bodyweight Tracker</p>
           <div className="w-8 h-0.5 bg-accent mx-auto mt-4"></div>
         </div>
 

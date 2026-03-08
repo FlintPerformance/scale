@@ -23,6 +23,7 @@ export default {
         cream: '#ede8df'
       },
       fontFamily: {
+        logo: ['"Barlow Condensed"', 'sans-serif'],
         heading: ['"Barlow Condensed"', 'sans-serif'],
         display: ['"Bebas Neue"', 'sans-serif'],
         body: ['"DM Sans"', 'sans-serif']

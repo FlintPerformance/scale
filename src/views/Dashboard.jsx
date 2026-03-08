@@ -26,7 +26,7 @@ export default function Dashboard() {
   }, [activeGoal, latest]);
 
   return (
-    <div className="px-4 pt-6 pb-4 max-w-lg desktop:max-w-3xl mx-auto">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
