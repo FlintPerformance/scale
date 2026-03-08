@@ -52,16 +52,6 @@ alter table public.weight_entries enable row level security;
 create policy "Users can manage own weight entries" on public.weight_entries
   for all using (auth.uid() = user_id);
 
--- Circle members can view each other's weight entries
-create policy "Circle members can view shared entries" on public.weight_entries
-  for select using (
-    user_id in (
-      select cm2.user_id from public.circle_members cm1
-      join public.circle_members cm2 on cm1.circle_id = cm2.circle_id
-      where cm1.user_id = auth.uid()
-    )
-  );
-
 -- Goals
 create table if not exists public.goals (
   id text primary key,
@@ -92,19 +82,14 @@ create table if not exists public.circles (
 
 alter table public.circles enable row level security;
 
-create policy "Circle members can view their circles" on public.circles
-  for select using (
-    id in (select circle_id from public.circle_members where user_id = auth.uid())
-  );
-
-create policy "Authenticated users can create circles" on public.circles
-  for insert with check (auth.uid() = created_by);
-
 -- Allow anyone to look up a circle by invite code (for joining)
 create policy "Anyone can lookup circle by invite code" on public.circles
   for select using (true);
 
--- Circle members
+create policy "Authenticated users can create circles" on public.circles
+  for insert with check (auth.uid() = created_by);
+
+-- Circle members (must be created before policies that reference it)
 create table if not exists public.circle_members (
   id uuid default gen_random_uuid() primary key,
   circle_id uuid references public.circles(id) on delete cascade not null,
@@ -129,6 +114,16 @@ create policy "Users can join circles" on public.circle_members
 
 create policy "Users can leave circles" on public.circle_members
   for delete using (auth.uid() = user_id);
+
+-- Now add the cross-table policy (circle_members exists at this point)
+create policy "Circle members can view shared entries" on public.weight_entries
+  for select using (
+    user_id in (
+      select cm2.user_id from public.circle_members cm1
+      join public.circle_members cm2 on cm1.circle_id = cm2.circle_id
+      where cm1.user_id = auth.uid()
+    )
+  );
 
 -- Cheers (reactions on weight entries)
 create table if not exists public.cheers (
