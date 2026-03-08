@@ -45,91 +45,93 @@ export default function LogWeight() {
     <div className="max-w-xl">
       <h1 className="font-heading text-xl font-bold text-cream mb-3">Log Weight</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-2">
         {/* Weight Input */}
-        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 text-center">
-          <label className="block text-cream/50 text-xs uppercase tracking-wider mb-2">Weight ({unit})</label>
+        <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5 text-center">
+          <label className="block text-cream/50 text-xs uppercase tracking-wider mb-1">Weight ({unit})</label>
           <input
             type="number"
             step="0.1"
             value={weight}
             onChange={e => setWeight(e.target.value)}
             placeholder={lastWeight ? lastWeight.toFixed(1) : '0.0'}
-            className="bg-transparent border-none text-center font-display text-5xl text-cream w-full focus:ring-0 focus:outline-none"
+            className="bg-transparent border-none text-center font-display text-4xl text-cream w-full focus:ring-0 focus:outline-none"
             autoFocus
           />
           {diff !== null && (
-            <p className={`text-xs mt-1.5 ${diff < 0 ? 'text-success' : diff > 0 ? 'text-danger' : 'text-cream/40'}`}>
+            <p className={`text-xs mt-1 ${diff < 0 ? 'text-success' : diff > 0 ? 'text-danger' : 'text-cream/40'}`}>
               {diff > 0 ? '+' : ''}{diff.toFixed(1)} {unit} from last
             </p>
           )}
         </div>
 
-        {/* Morning Weight Toggle */}
-        <label className="flex items-center gap-3 bg-surface-mid rounded-sm px-3 py-2.5 border border-white/5 cursor-pointer select-none">
-          <div className="relative">
+        {/* Weight Slider */}
+        {lastWeight && (
+          <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
+            <div className="flex justify-between text-xs text-cream/40 mb-1.5">
+              <span>{(lastWeight - 3).toFixed(1)}</span>
+              <span className="text-cream/60 font-medium">{weight || lastWeight.toFixed(1)} {unit}</span>
+              <span>{(lastWeight + 3).toFixed(1)}</span>
+            </div>
             <input
-              type="checkbox"
-              checked={isMorning}
-              onChange={e => setIsMorning(e.target.checked)}
-              disabled={hasMorningForDate && !isMorning}
-              className="sr-only peer"
+              type="range"
+              min={(lastWeight - 3).toFixed(1)}
+              max={(lastWeight + 3).toFixed(1)}
+              step="0.1"
+              value={weight || lastWeight}
+              onChange={e => setWeight(Number(e.target.value).toFixed(1))}
+              className="w-full"
             />
-            <div className="w-9 h-5 bg-surface-up rounded-full border border-white/10 peer-checked:bg-accent peer-checked:border-accent transition-colors" />
-            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow peer-checked:translate-x-4 transition-transform" />
           </div>
-          <div className="flex-1">
-            <span className="text-cream text-sm font-medium">Morning Weight</span>
-            <p className="text-cream/40 text-xs mt-0.5">Used for progress tracking &amp; charts</p>
-          </div>
-          {hasMorningForDate && !isMorning && (
-            <span className="text-accent text-[10px] uppercase tracking-wider">Already logged</span>
-          )}
-        </label>
+        )}
+
+        {/* Morning Weight Toggle */}
+        <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={isMorning}
+                onChange={e => setIsMorning(e.target.checked)}
+                disabled={hasMorningForDate && !isMorning}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-surface-up rounded-full border border-white/10 peer-checked:bg-accent peer-checked:border-accent transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow peer-checked:translate-x-4 transition-transform" />
+            </div>
+            <div className="flex-1">
+              <span className="text-cream text-sm font-medium">Morning Weight</span>
+              <p className="text-cream/40 text-xs mt-0.5">Used for progress tracking &amp; charts</p>
+            </div>
+            {hasMorningForDate && !isMorning && (
+              <span className="text-accent text-[10px] uppercase tracking-wider">Already logged</span>
+            )}
+          </label>
+        </div>
 
         {/* Date & Notes row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Date</label>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
+            <label className="block text-cream/50 text-xs uppercase tracking-wider mb-1.5">Date</label>
             <input
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
               max={todayStr()}
-              className="w-full"
+              className="w-full bg-transparent border-none text-cream text-sm p-0 focus:ring-0 focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Notes</label>
+          <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
+            <label className="block text-cream/50 text-xs uppercase tracking-wider mb-1.5">Notes</label>
             <input
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Optional"
-              className="w-full"
+              className="w-full bg-transparent border-none text-cream text-sm p-0 focus:ring-0 focus:outline-none placeholder:text-cream/30"
             />
           </div>
         </div>
-
-        {/* Weight Slider */}
-        {lastWeight && (
-          <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5">
-            <div className="flex justify-between text-xs text-cream/40 mb-2">
-              <span>{(lastWeight - 5).toFixed(1)}</span>
-              <span className="text-cream/60 font-medium">{weight || lastWeight.toFixed(1)} {unit}</span>
-              <span>{(lastWeight + 5).toFixed(1)}</span>
-            </div>
-            <input
-              type="range"
-              min={(lastWeight - 5).toFixed(1)}
-              max={(lastWeight + 5).toFixed(1)}
-              step="0.1"
-              value={weight || lastWeight}
-              onChange={e => setWeight(Number(e.target.value).toFixed(1))}
-              className="w-full accent-accent h-1.5 bg-surface-up rounded-full appearance-none cursor-pointer slider-thumb"
-            />
-          </div>
-        )}
 
         <button
           type="submit"
