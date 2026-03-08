@@ -91,8 +91,8 @@ export default function Layout({ children }) {
               {view === id && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full" />
               )}
-              <Icon className="w-3.5 h-3.5" />
-              <span className="text-[8px] mt-px">{label}</span>
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px]">{label}</span>
             </button>
           ))}
         </div>
