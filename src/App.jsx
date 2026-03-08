@@ -43,6 +43,8 @@ export default function App() {
     return sessionStorage.getItem('pending-invite') || null;
   });
 
+  const [syncedOnce, setSyncedOnce] = useState(false);
+
   // Auto-sync from cloud when user signs in
   React.useEffect(() => {
     if (!user || !data.loaded) return;
@@ -55,18 +57,22 @@ export default function App() {
       } catch (err) {
         console.error('Auto-sync failed:', err);
       } finally {
-        if (!cancelled) setSyncing(false);
+        if (!cancelled) {
+          setSyncing(false);
+          setSyncedOnce(true);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [user?.id, data.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show onboarding for new users who haven't completed it and have no weight data
+  // Wait until cloud sync finishes so we don't falsely show it to returning users
   const checkOnboarding = useCallback(() => {
-    if (user && data.loaded && data.weights.length === 0 && !localStorage.getItem('scale-onboarding-done')) {
+    if (user && data.loaded && syncedOnce && data.weights.length === 0 && !localStorage.getItem('scale-onboarding-done')) {
       setShowOnboarding(true);
     }
-  }, [user, data.loaded, data.weights.length]);
+  }, [user, data.loaded, syncedOnce, data.weights.length]);
 
   // Run check when data loads
   React.useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
