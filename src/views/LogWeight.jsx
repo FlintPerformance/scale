@@ -33,7 +33,7 @@ export default function LogWeight() {
   const diff = lastWeight && weight ? (Number(weight) - lastWeight) : null;
 
   return (
-    <div className="px-4 pt-6 max-w-lg mx-auto">
+    <div className="px-4 pt-6 max-w-lg desktop:max-w-xl mx-auto">
       <h1 className="font-heading text-2xl font-bold text-cream mb-6">Log Weight</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">

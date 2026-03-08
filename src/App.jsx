@@ -88,7 +88,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center">
-          <h1 className="font-heading font-black text-5xl text-cream tracking-wider">SCALE<span className="text-accent">.</span></h1>
+          <h1 className="font-heading font-black text-5xl text-cream tracking-wider">FLINT<span className="text-accent">.</span></h1>
           <p className="text-cream/40 mt-2 font-body text-sm">Loading...</p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function App() {
   return (
     <AppDataContext.Provider value={dataValue}>
       <AppActionsContext.Provider value={actionsValue}>
-        <div className="min-h-screen bg-surface pb-20">
+        <div className="min-h-screen bg-surface pb-20 desktop:pb-0 desktop:pl-56">
           {!data.loaded ? (
             <div className="flex items-center justify-center h-screen">
               <div className="animate-pulse-accent text-accent font-display text-3xl">Loading data...</div>
