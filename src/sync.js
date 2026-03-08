@@ -87,6 +87,5 @@ export async function pullFromCloud(userId) {
 }
 
 export async function syncData(userId) {
-  await pushToCloud(userId);
   return pullFromCloud(userId);
 }
