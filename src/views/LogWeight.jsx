@@ -50,13 +50,13 @@ export default function LogWeight() {
         <div className="bg-surface-mid rounded-sm px-4 py-3 border border-white/5 text-center">
           <label className="block text-cream/50 text-xs uppercase tracking-wider mb-1">Weight ({unit})</label>
           <input
-            type="number"
-            step="0.1"
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9.]*"
             value={weight}
             onChange={e => setWeight(e.target.value)}
             placeholder={lastWeight ? lastWeight.toFixed(1) : '0.0'}
             className="bg-transparent border-none text-center font-display text-4xl text-cream w-full focus:ring-0 focus:outline-none"
-            autoFocus
           />
           {diff !== null && (
             <p className={`text-xs mt-1 ${diff < 0 ? 'text-success' : diff > 0 ? 'text-danger' : 'text-cream/40'}`}>

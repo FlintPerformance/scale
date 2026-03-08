@@ -76,7 +76,7 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom-compact nav-extend-bottom">
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] safe-bottom">
         <div className="flex h-12">
           {NAV.map(({ id, label, Icon }) => (
             <button
