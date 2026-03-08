@@ -65,6 +65,49 @@ export function getStreak(entries) {
   return streak;
 }
 
+/** Aggregate entries to one point per day. Uses morning weight if available, otherwise averages all weights for the day. */
+export function aggregateDaily(entries, mode = 'morning') {
+  const byDate = {};
+  for (const e of entries) {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  }
+  const sorted = Object.keys(byDate).sort();
+  return sorted.map(date => {
+    const dayEntries = byDate[date];
+    const morning = dayEntries.find(e => e.isMorning);
+    const weights = dayEntries.map(e => e.weight);
+    const avg = weights.reduce((s, w) => s + w, 0) / weights.length;
+    const weight = mode === 'morning' && morning ? morning.weight : Number(avg.toFixed(1));
+    return { date, weight, unit: dayEntries[0].unit };
+  });
+}
+
+/** Build candlestick data: for each day, compute open (first), close (last), high, low. */
+export function buildCandlestickData(entries) {
+  const byDate = {};
+  for (const e of entries) {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  }
+  const sorted = Object.keys(byDate).sort();
+  return sorted.map(date => {
+    const dayEntries = byDate[date];
+    const weights = dayEntries.map(e => e.weight);
+    const morning = dayEntries.find(e => e.isMorning);
+    return {
+      date,
+      low: Math.min(...weights),
+      high: Math.max(...weights),
+      open: weights[0],
+      close: weights[weights.length - 1],
+      morning: morning ? morning.weight : null,
+      count: weights.length,
+      unit: dayEntries[0].unit,
+    };
+  });
+}
+
 export function getTimeAgo(timestamp) {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
   if (seconds < 60) return 'just now';

@@ -22,6 +22,7 @@ export async function pushToCloud(userId) {
         weight: w.weight,
         unit: w.unit || 'lb',
         notes: w.notes || null,
+        is_morning: w.isMorning || false,
         updated_at: new Date(w.updatedAt).toISOString()
       })));
     if (error) throw error;
@@ -65,6 +66,7 @@ export async function pullFromCloud(userId) {
     weight: w.weight,
     unit: w.unit,
     notes: w.notes,
+    isMorning: w.is_morning || false,
     updatedAt: new Date(w.updated_at).getTime()
   }));
 

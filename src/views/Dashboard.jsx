@@ -1,21 +1,62 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { formatWeight, getWeightChange, getMovingAverage, getStreak, formatDateShort } from '../utils';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { formatWeight, getWeightChange, getMovingAverage, getStreak, formatDateShort, aggregateDaily, buildCandlestickData } from '../utils';
+import { ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+
+function CandlestickShape({ x, y, width, height, payload }) {
+  if (!payload) return null;
+  const { low, high, morning } = payload;
+  const yScale = height !== 0 ? (high - low) / Math.abs(height) : 0;
+  // For candlestick we use the bar's coordinates to derive positions
+  const barCenter = x + width / 2;
+  const wickWidth = Math.max(1, width * 0.15);
+  const bodyWidth = Math.max(2, width * 0.6);
+
+  return (
+    <g>
+      {/* Wick - full range line */}
+      <rect x={barCenter - wickWidth / 2} y={y} width={wickWidth} height={Math.abs(height) || 1} fill="#ede8df33" rx={0.5} />
+      {/* Body */}
+      <rect x={barCenter - bodyWidth / 2} y={y} width={bodyWidth} height={Math.abs(height) || 1} fill="#f04a0e" rx={1} opacity={0.7} />
+      {/* Morning weight marker */}
+      {morning != null && yScale !== 0 && (
+        <circle cx={barCenter} cy={y + (high - morning) / yScale} r={Math.max(2, width * 0.25)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1} />
+      )}
+    </g>
+  );
+}
 
 export default function Dashboard() {
   const { weights, goals, unit, displayName } = useAppData();
   const { navigate } = useAppActions();
+  const [chartMode, setChartMode] = useState('line');
 
   const latest = weights[0];
   const activeGoal = goals.find(g => g.active);
   const streak = getStreak(weights);
   const last30 = weights.filter(w => w.date >= new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const change = getWeightChange(last30);
+
   const chartData = useMemo(() => {
-    const recent = weights.slice(0, 60).reverse();
-    return getMovingAverage(recent);
+    const recent = weights.slice(0, 60);
+    const daily = aggregateDaily(recent, 'morning');
+    return getMovingAverage(daily);
   }, [weights]);
+
+  const candlestickData = useMemo(() => {
+    if (chartMode !== 'candle') return [];
+    const recent = weights.slice(0, 60);
+    return buildCandlestickData(recent);
+  }, [weights, chartMode]);
+
+  const candleDomain = useMemo(() => {
+    if (!candlestickData.length) return ['auto', 'auto'];
+    const allLows = candlestickData.map(d => d.low);
+    const allHighs = candlestickData.map(d => d.high);
+    const min = Math.floor(Math.min(...allLows) - 1);
+    const max = Math.ceil(Math.max(...allHighs) + 1);
+    return [min, max];
+  }, [candlestickData]);
 
   const goalProgress = useMemo(() => {
     if (!activeGoal || !latest) return null;
@@ -113,47 +154,108 @@ export default function Dashboard() {
         <div>
           {chartData.length > 1 && (
             <div className="bg-surface-mid rounded-2xl p-4 border border-white/5 mb-4 mt-4 desktop:mt-0">
-              <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Weight Trend</p>
-              <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f04a0e" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#f04a0e" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDateShort}
-                    tick={{ fill: '#ede8df66', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    domain={['auto', 'auto']}
-                    tick={{ fill: '#ede8df66', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
-                    labelFormatter={formatDateShort}
-                    formatter={(v) => [formatWeight(v, unit)]}
-                  />
-                  <Area type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} fill="url(#weightGrad)" dot={false} />
-                  <Area type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className="flex gap-4 mt-2 justify-center">
-                <span className="flex items-center gap-1 text-[10px] text-cream/40">
-                  <span className="w-3 h-0.5 bg-accent rounded"></span> Weight
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-cream/40">
-                  <span className="w-3 h-0.5 bg-cold rounded border-dashed"></span> 7d Avg
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-cream/50 text-xs uppercase tracking-wider">Weight Trend</p>
+                <div className="flex gap-1 bg-surface-up rounded-lg p-0.5">
+                  <button
+                    onClick={() => setChartMode('line')}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'line' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                  >
+                    Line
+                  </button>
+                  <button
+                    onClick={() => setChartMode('candle')}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${chartMode === 'candle' ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'}`}
+                  >
+                    Candle
+                  </button>
+                </div>
               </div>
+
+              {chartMode === 'line' ? (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f04a0e" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#f04a0e" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={formatDateShort}
+                        tick={{ fill: '#ede8df66', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        domain={['auto', 'auto']}
+                        tick={{ fill: '#ede8df66', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={40}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                        labelFormatter={formatDateShort}
+                        formatter={(v) => [formatWeight(v, unit)]}
+                      />
+                      <Area type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} fill="url(#weightGrad)" dot={false} />
+                      <Area type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                  <div className="flex gap-4 mt-2 justify-center">
+                    <span className="flex items-center gap-1 text-[10px] text-cream/40">
+                      <span className="w-3 h-0.5 bg-accent rounded"></span> Morning / Avg
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-cream/40">
+                      <span className="w-3 h-0.5 bg-cold rounded border-dashed"></span> 7d Avg
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <ComposedChart data={candlestickData}>
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={formatDateShort}
+                        tick={{ fill: '#ede8df66', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        domain={candleDomain}
+                        tick={{ fill: '#ede8df66', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={40}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 12, color: '#ede8df' }}
+                        labelFormatter={formatDateShort}
+                        formatter={(value, name) => {
+                          if (name === 'range') return null;
+                          return [formatWeight(value, unit), name === 'morning' ? 'Morning' : name.charAt(0).toUpperCase() + name.slice(1)];
+                        }}
+                        itemSorter={() => 0}
+                      />
+                      <Bar dataKey="high" fill="transparent" isAnimationActive={false} shape={<CandlestickShape />} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div className="flex gap-4 mt-2 justify-center">
+                    <span className="flex items-center gap-1 text-[10px] text-cream/40">
+                      <span className="w-3 h-1 bg-accent rounded opacity-70"></span> Day Range
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-cream/40">
+                      <span className="w-2 h-2 bg-accent rounded-full border border-cream"></span> Morning
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

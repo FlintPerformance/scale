@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { todayStr } from '../utils';
 
@@ -8,9 +8,14 @@ export default function LogWeight() {
   const [weight, setWeight] = useState('');
   const [date, setDate] = useState(todayStr());
   const [notes, setNotes] = useState('');
+  const [isMorning, setIsMorning] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const lastWeight = weights[0]?.weight;
+
+  const hasMorningForDate = useMemo(() => {
+    return weights.some(w => w.date === date && w.isMorning);
+  }, [weights, date]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,9 +23,13 @@ export default function LogWeight() {
       showToast('Enter a valid weight', 'error');
       return;
     }
+    if (isMorning && hasMorningForDate) {
+      showToast('Morning weight already logged for this date', 'error');
+      return;
+    }
     setSaving(true);
     try {
-      await addWeight(weight, unit, date, notes);
+      await addWeight(weight, unit, date, notes, isMorning);
       showToast('Weight logged!');
       navigate('dashboard');
     } catch {
@@ -55,6 +64,28 @@ export default function LogWeight() {
             </p>
           )}
         </div>
+
+        {/* Morning Weight Toggle */}
+        <label className="flex items-center gap-3 bg-surface-mid rounded-xl px-4 py-3 border border-white/5 cursor-pointer select-none">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={isMorning}
+              onChange={e => setIsMorning(e.target.checked)}
+              disabled={hasMorningForDate && !isMorning}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-surface-up rounded-full border border-white/10 peer-checked:bg-accent peer-checked:border-accent transition-colors" />
+            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-cream rounded-full shadow peer-checked:translate-x-4 transition-transform" />
+          </div>
+          <div className="flex-1">
+            <span className="text-cream text-sm font-medium">Morning Weight</span>
+            <p className="text-cream/40 text-xs mt-0.5">Used for progress tracking &amp; charts</p>
+          </div>
+          {hasMorningForDate && !isMorning && (
+            <span className="text-accent text-[10px] uppercase tracking-wider">Already logged</span>
+          )}
+        </label>
 
         {/* Date */}
         <div>

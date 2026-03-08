@@ -21,7 +21,7 @@ export function useLocalData(userId) {
     if (userId) reload();
   }, [userId, reload]);
 
-  const addWeight = useCallback(async (weight, unit = 'lb', date, notes = '') => {
+  const addWeight = useCallback(async (weight, unit = 'lb', date, notes = '', isMorning = false) => {
     const entry = {
       id: generateId(),
       userId,
@@ -29,6 +29,7 @@ export function useLocalData(userId) {
       weight: Number(weight),
       unit,
       notes,
+      isMorning,
       updatedAt: Date.now()
     };
     await db.saveWeight(entry);
