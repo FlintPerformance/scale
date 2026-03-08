@@ -5,6 +5,31 @@ import { exportAllDB, importAllDB, clearAllDB } from '../db';
 import Avatar from '../components/Avatar';
 import { subscribeToPush, unsubscribeFromPush, isPushSupported } from '../notifications';
 
+function compressImage(file, maxSize = 800, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        blob => blob ? resolve(new File([blob], 'avatar.webp', { type: 'image/webp' })) : reject(new Error('Compression failed')),
+        'image/webp',
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export default function Settings() {
   const { user, displayName, unit, syncing } = useAppData();
   const { signOut, sync, changeUnit, showToast, reload } = useAppActions();
@@ -27,13 +52,10 @@ export default function Settings() {
 
   const handleAvatarUpload = async (file) => {
     try {
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('Image must be under 2MB', 'error');
-        return;
-      }
+      const compressed = await compressImage(file, 800, 0.8);
+      file = compressed;
 
-      const ext = file.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${ext}`;
+      const filePath = `${user.id}/avatar.webp`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -52,7 +74,7 @@ export default function Settings() {
         .upsert({ id: user.id, avatar_url: url, display_name: displayName });
 
       setAvatarUrl(url);
-      showToast('Profile picture updated!');
+      showToast('Photo updated!');
     } catch (err) {
       showToast('Upload failed: ' + err.message, 'error');
     }
