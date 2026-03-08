@@ -84,15 +84,15 @@ export default function Layout({ children }) {
               onClick={() => navigate(id)}
               aria-label={id}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex items-center justify-center gap-1 leading-none transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center leading-none transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
               {view === id && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full" />
               )}
-              <Icon className="w-4 h-4" />
-              <span className="text-[10px]">{label}</span>
+              <Icon className="w-3.5 h-3.5" />
+              <span className="text-[8px] mt-px">{label}</span>
             </button>
           ))}
         </div>
