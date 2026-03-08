@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 import { useAppActions } from '../App';
 
+const FEATURES = [
+  { icon: ScaleIcon, text: 'Log daily weigh-ins in seconds' },
+  { icon: ChartIcon, text: 'Visualize trends & moving averages' },
+  { icon: TargetIcon, text: 'Set goals & track progress' },
+  { icon: UsersIcon, text: 'Share progress with your circle' },
+  { icon: SyncIcon, text: 'Sync data across all your devices' }
+];
+
 export default function AuthView() {
   const { signIn, signUp, showToast } = useAppActions();
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -27,13 +35,34 @@ export default function AuthView() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
+        {/* Brand header */}
+        <div className="text-center mb-6">
           <h1 className="font-heading font-black text-6xl text-cream tracking-wider">FLINT<span className="text-accent">.</span></h1>
-          <p className="text-cream/50 mt-2 font-body text-sm">Track your weight. Stay accountable.</p>
-          <p className="text-muted mt-1 font-body text-[10px] uppercase tracking-widest">Scale</p>
+          <p className="text-muted mt-2 font-heading text-xs uppercase tracking-[0.3em]">Bodyweight Tracker</p>
+          <div className="w-8 h-0.5 bg-accent mx-auto mt-4"></div>
         </div>
+
+        {/* Summary */}
+        <p className="text-cream/60 text-center font-body text-sm leading-relaxed mb-6">
+          Your complete toolkit for tracking bodyweight, setting goals, and staying accountable — built for athletes who take their progress seriously.
+        </p>
+
+        {/* Feature list */}
+        <div className="space-y-3 mb-8">
+          {FEATURES.map((f, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <f.icon />
+              <span className="text-cream/50 text-sm font-body">{f.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Form heading */}
+        <h2 className="font-heading font-bold text-lg text-cream text-center uppercase tracking-wider mb-5">
+          {mode === 'signup' ? 'Create Your Account' : 'Welcome Back'}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
@@ -67,7 +96,7 @@ export default function AuthView() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
+              placeholder="Min. 6 characters"
               required
               minLength={6}
               className="w-full"
@@ -77,9 +106,9 @@ export default function AuthView() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent hover:bg-accent-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3.5 rounded-xl transition-colors disabled:opacity-50 text-sm"
           >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
 
@@ -94,5 +123,53 @@ export default function AuthView() {
         </p>
       </div>
     </div>
+  );
+}
+
+function ScaleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0">
+      <path d="M12 3v17M5 8l7-5 7 5" />
+      <rect x="4" y="14" width="16" height="6" rx="1" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" />
+      <path d="M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function SyncIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+    </svg>
   );
 }
