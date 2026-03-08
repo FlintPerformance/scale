@@ -77,14 +77,14 @@ export default function Layout({ children }) {
 
       {/* Mobile Bottom Nav */}
       <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] nav-extend-bottom">
-        <div className="flex" style={{ height: '34px' }}>
+        <div className="flex" style={{ height: '30px' }}>
           {NAV.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => navigate(id)}
               aria-label={id}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center justify-end pb-0.5 leading-none transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center pt-0.5 leading-none transition-colors ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
