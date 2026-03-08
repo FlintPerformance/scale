@@ -1,0 +1,14 @@
+{
+  "name": "SCALE. — Bodyweight Tracker",
+  "short_name": "SCALE.",
+  "description": "Track your bodyweight, set goals, and stay accountable with your circle.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
