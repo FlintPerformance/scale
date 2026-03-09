@@ -36,7 +36,7 @@ function CandlestickShape({ x, y, width, height, payload }) {
       {/* Wick — full day range */}
       <rect x={cx - wickWidth / 2} y={top} width={wickWidth} height={absH} fill="#ede8df20" rx={1} />
       {/* Body — open to close */}
-      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#22c55e' : '#f04a0e'} rx={1.5} opacity={0.85} />
+      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#f04a0e' : 'transparent'} stroke="#f04a0e" strokeWidth={1.5} rx={1.5} opacity={0.9} />
       {/* Morning weight marker */}
       {morning != null && (
         <circle cx={cx} cy={top + (high - morning) * pxPerUnit} r={Math.max(3, width * 0.22)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
@@ -292,10 +292,10 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                   <div className="flex gap-4 mt-2 justify-center">
                     <span className="flex items-center gap-1 text-[10px] text-cream/40">
-                      <span className="w-2 h-3 bg-success rounded-sm opacity-85"></span> Down
+                      <span className="w-2 h-3 bg-accent rounded-sm"></span> Down
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-cream/40">
-                      <span className="w-2 h-3 bg-accent rounded-sm opacity-85"></span> Up
+                      <span className="w-2 h-3 rounded-sm border border-accent"></span> Up
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-cream/40">
                       <span className="w-2 h-2 bg-accent rounded-full border border-cream"></span> Morning

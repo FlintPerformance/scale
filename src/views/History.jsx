@@ -31,7 +31,7 @@ function CandlestickShape({ x, y, width, height, payload }) {
   return (
     <g>
       <rect x={cx - wickWidth / 2} y={top} width={wickWidth} height={absH} fill="#ede8df20" rx={1} />
-      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#22c55e' : '#f04a0e'} rx={1.5} opacity={0.85} />
+      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#f04a0e' : 'transparent'} stroke="#f04a0e" strokeWidth={1.5} rx={1.5} opacity={0.9} />
       {morning != null && (
         <circle cx={cx} cy={top + (high - morning) * pxPerUnit} r={Math.max(3, width * 0.22)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
       )}
