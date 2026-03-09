@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
-import { formatWeight, formatDateShort, getWeightChange, getStreak, generateId, todayStr, aggregateDaily } from '../utils';
+import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, aggregateDaily } from '../utils';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import Avatar from '../components/Avatar';
 
@@ -32,6 +32,12 @@ export default function Circle() {
   const [selectedCircle, setSelectedCircle] = useState(null);
   const [compareRange, setCompareRange] = useState('7');
   const [showCircleInfo, setShowCircleInfo] = useState(false);
+  const [predictions, setPredictions] = useState([]);
+  const [predictionVotes, setPredictionVotes] = useState({});
+  const [showNewPrediction, setShowNewPrediction] = useState(false);
+  const [predictionWeight, setPredictionWeight] = useState('');
+  const [predictionDeadline, setPredictionDeadline] = useState('30');
+  const [predictionMessage, setPredictionMessage] = useState('');
 
   const loadCircleData = useCallback(async () => {
     setLoading(true);
@@ -92,6 +98,30 @@ export default function Circle() {
           reactionMap[c.entry_id].push({ user_id: c.user_id, emoji: c.emoji || '🔥' });
         });
         setReactions(reactionMap);
+      }
+
+      // Load predictions for all circles
+      const { data: predictionData } = await supabase
+        .from('predictions')
+        .select('*')
+        .in('circle_id', circleIds)
+        .order('created_at', { ascending: false });
+
+      setPredictions(predictionData || []);
+
+      // Load votes for all predictions
+      const predictionIds = (predictionData || []).map(p => p.id);
+      if (predictionIds.length) {
+        const { data: voteData } = await supabase
+          .from('prediction_votes')
+          .select('prediction_id, user_id, vote')
+          .in('prediction_id', predictionIds);
+        const voteMap = {};
+        (voteData || []).forEach(v => {
+          if (!voteMap[v.prediction_id]) voteMap[v.prediction_id] = [];
+          voteMap[v.prediction_id].push(v);
+        });
+        setPredictionVotes(voteMap);
       }
 
       const profileMap = {};
@@ -225,6 +255,128 @@ export default function Circle() {
     } catch (err) { showToast('Failed to react', 'error'); }
   };
 
+  const VOTE_OPTIONS = [
+    { key: 'nails_it', emoji: '🎯', label: 'Nails it', desc: 'Within 0.5 lb' },
+    { key: 'overshoots', emoji: '📈', label: 'Overshoots', desc: '0.5–1.5 lb past' },
+    { key: 'falls_short', emoji: '📉', label: 'Falls short', desc: "Doesn't reach" },
+    { key: 'crushes_it', emoji: '🔥', label: 'Crushes it', desc: '1.5+ lb past' },
+  ];
+
+  const resolvePrediction = (prediction) => {
+    if (!prediction.actual_weight) return null;
+    const target = Number(prediction.predicted_weight);
+    const actual = Number(prediction.actual_weight);
+    const start = Number(prediction.start_weight);
+    // Direction: losing if target < start, gaining if target > start
+    const isLosing = target < start;
+    const diff = isLosing ? target - actual : actual - target;
+    // diff > 0 means overshot (went past target in the intended direction)
+    // diff < 0 means fell short
+    const absDiff = Math.abs(diff);
+
+    if (absDiff <= 0.5) return 'nails_it';
+    if (diff > 0 && absDiff <= 1.5) return 'overshoots';
+    if (diff > 0 && absDiff > 1.5) return 'crushes_it';
+    return 'falls_short';
+  };
+
+  const createPrediction = async () => {
+    if (!predictionWeight || !circles.length) return;
+    const targetCircle = selectedCircle || circles[0].id;
+    const latestWeight = localWeights.length > 0
+      ? [...localWeights].sort((a, b) => b.date.localeCompare(a.date))[0].weight
+      : null;
+    if (!latestWeight) {
+      showToast('Log a weight first', 'error');
+      return;
+    }
+    const deadlineDate = new Date();
+    deadlineDate.setDate(deadlineDate.getDate() + parseInt(predictionDeadline));
+    try {
+      const { error } = await supabase.from('predictions').insert({
+        user_id: user.id,
+        circle_id: targetCircle,
+        predicted_weight: parseFloat(predictionWeight),
+        start_weight: latestWeight,
+        unit,
+        deadline: deadlineDate.toISOString().slice(0, 10),
+        message: predictionMessage.trim() || null,
+      });
+      if (error) throw error;
+      showToast('Prediction locked in!');
+      setShowNewPrediction(false);
+      setPredictionWeight('');
+      setPredictionMessage('');
+      await loadCircleData();
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+
+  const handleVote = async (predictionId, vote) => {
+    try {
+      const existing = (predictionVotes[predictionId] || []).find(v => v.user_id === user.id);
+      if (existing) {
+        if (existing.vote === vote) {
+          await supabase.from('prediction_votes').delete()
+            .eq('prediction_id', predictionId).eq('user_id', user.id);
+        } else {
+          await supabase.from('prediction_votes')
+            .update({ vote })
+            .eq('prediction_id', predictionId).eq('user_id', user.id);
+        }
+      } else {
+        await supabase.from('prediction_votes').insert({
+          prediction_id: predictionId, user_id: user.id, vote,
+        });
+      }
+      // Optimistic update
+      setPredictionVotes(prev => {
+        const list = [...(prev[predictionId] || [])];
+        const idx = list.findIndex(v => v.user_id === user.id);
+        if (idx >= 0) {
+          if (list[idx].vote === vote) list.splice(idx, 1);
+          else list[idx] = { ...list[idx], vote };
+        } else {
+          list.push({ prediction_id: predictionId, user_id: user.id, vote });
+        }
+        return { ...prev, [predictionId]: list };
+      });
+    } catch (err) { showToast('Failed to vote', 'error'); }
+  };
+
+  const checkAndResolvePredictions = useCallback(async () => {
+    const today = todayStr();
+    const toResolve = predictions.filter(p => p.status === 'active' && p.deadline <= today);
+    for (const pred of toResolve) {
+      // Get 3-day average around deadline for fairness
+      const deadlineDate = new Date(pred.deadline + 'T00:00:00');
+      const dayBefore = new Date(deadlineDate); dayBefore.setDate(dayBefore.getDate() - 1);
+      const dayAfter = new Date(deadlineDate); dayAfter.setDate(dayAfter.getDate() + 1);
+      const range = [dayBefore, deadlineDate, dayAfter].map(d => d.toISOString().slice(0, 10));
+
+      const { data: weights } = await supabase
+        .from('weight_entries')
+        .select('weight')
+        .eq('user_id', pred.user_id)
+        .in('date', range);
+
+      if (!weights || weights.length === 0) continue;
+
+      const avg = weights.reduce((s, w) => s + Number(w.weight), 0) / weights.length;
+      const actualWeight = Number(avg.toFixed(1));
+      const result = resolvePrediction({ ...pred, actual_weight: actualWeight });
+
+      await supabase.from('predictions').update({
+        status: 'resolved',
+        actual_weight: actualWeight,
+        result,
+        resolved_at: new Date().toISOString(),
+      }).eq('id', pred.id);
+    }
+    if (toResolve.length > 0) await loadCircleData();
+  }, [predictions, loadCircleData]);
+
+  useEffect(() => { if (predictions.length) checkAndResolvePredictions(); }, [predictions.length]);
+
   const leaveCircle = async (circleId) => {
     try {
       await supabase.from('circle_members').delete().eq('circle_id', circleId).eq('user_id', user.id);
@@ -232,6 +384,34 @@ export default function Circle() {
       await loadCircleData();
     } catch (err) { showToast(err.message, 'error'); }
   };
+
+  const filteredPredictions = useMemo(() => {
+    if (!selectedCircle) return predictions;
+    return predictions.filter(p => p.circle_id === selectedCircle);
+  }, [predictions, selectedCircle]);
+
+  // Check if user has an active prediction in the current circle scope
+  const hasActivePrediction = useMemo(() => {
+    return filteredPredictions.some(p => p.user_id === user.id && p.status === 'active');
+  }, [filteredPredictions, user.id]);
+
+  // Predictor leaderboard — accuracy across all visible predictions
+  const predictorStats = useMemo(() => {
+    const resolved = filteredPredictions.filter(p => p.status === 'resolved' && p.result);
+    if (!resolved.length) return [];
+    const stats = {};
+    resolved.forEach(pred => {
+      const votes = predictionVotes[pred.id] || [];
+      votes.forEach(v => {
+        if (!stats[v.user_id]) stats[v.user_id] = { correct: 0, total: 0 };
+        stats[v.user_id].total++;
+        if (v.vote === pred.result) stats[v.user_id].correct++;
+      });
+    });
+    return Object.entries(stats)
+      .map(([userId, s]) => ({ userId, ...s, accuracy: s.total > 0 ? s.correct / s.total : 0 }))
+      .sort((a, b) => b.accuracy - a.accuracy || b.total - a.total);
+  }, [filteredPredictions, predictionVotes]);
 
   const filteredMembers = useMemo(() => {
     if (!selectedCircle) return members;
@@ -461,7 +641,7 @@ export default function Circle() {
 
           {/* Tab Bar */}
           <div className="flex gap-1 bg-surface-up rounded-sm p-0.5 mb-4">
-            {[['feed', 'Feed'], ['members', 'Members'], ['compare', 'Compare']].map(([id, label]) => (
+            {[['feed', 'Feed'], ['predictions', 'Predictions'], ['members', 'Members'], ['compare', 'Compare']].map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -564,6 +744,311 @@ export default function Circle() {
                     </div>
                   );
                 })
+              )}
+            </div>
+          )}
+
+          {/* Predictions Tab */}
+          {tab === 'predictions' && (
+            <div className="space-y-3">
+              {/* Create Prediction Button */}
+              {!showNewPrediction && !hasActivePrediction && (
+                <button
+                  onClick={() => setShowNewPrediction(true)}
+                  className="w-full bg-surface-mid hover:bg-surface-up border border-dashed border-accent/30 rounded-sm p-4 text-center transition-colors"
+                >
+                  <p className="text-accent font-semibold text-sm">Call Your Shot</p>
+                  <p className="text-cream/40 text-xs mt-0.5">Lock in a weight prediction for your circle</p>
+                </button>
+              )}
+
+              {hasActivePrediction && !showNewPrediction && (
+                <p className="text-cream/30 text-xs text-center py-1">You have an active prediction — resolve it before making another.</p>
+              )}
+
+              {/* Create Prediction Form */}
+              {showNewPrediction && (
+                <div className="bg-surface-mid rounded-sm p-4 border border-accent/20 animate-slide-up">
+                  <p className="text-cream font-medium text-sm mb-3">Call Your Shot</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-cream/40 text-[10px] uppercase tracking-wider block mb-1">I'll be at</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={predictionWeight}
+                          onChange={e => setPredictionWeight(e.target.value)}
+                          placeholder={localWeights.length ? String(localWeights.sort((a, b) => b.date.localeCompare(a.date))[0].weight) : '175'}
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <span className="text-cream/50 text-sm">{unit}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-cream/40 text-[10px] uppercase tracking-wider block mb-1">By</label>
+                      <div className="flex gap-1 bg-surface-up rounded-sm p-0.5">
+                        {[['14', '2 weeks'], ['30', '30 days'], ['60', '60 days'], ['90', '90 days']].map(([val, label]) => (
+                          <button
+                            key={val}
+                            onClick={() => setPredictionDeadline(val)}
+                            className={`flex-1 py-1.5 rounded-sm text-xs font-medium transition-colors ${
+                              predictionDeadline === val ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-cream/40 text-[10px] uppercase tracking-wider block mb-1">Message (optional)</label>
+                      <input
+                        type="text"
+                        value={predictionMessage}
+                        onChange={e => setPredictionMessage(e.target.value)}
+                        placeholder="Cutting season starts now..."
+                        className="w-full"
+                        maxLength={100}
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={createPrediction} className="bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-sm text-sm font-semibold transition-colors">
+                        Lock It In
+                      </button>
+                      <button onClick={() => setShowNewPrediction(false)} className="text-cream/40 text-sm">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Predictions */}
+              {filteredPredictions.filter(p => p.status === 'active').length > 0 && (
+                <div>
+                  <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-2">Active</p>
+                  <div className="space-y-3">
+                    {filteredPredictions.filter(p => p.status === 'active').map(pred => {
+                      const profile = members.find(m => m.user_id === pred.user_id)?.profiles;
+                      const votes = predictionVotes[pred.id] || [];
+                      const myVote = votes.find(v => v.user_id === user.id);
+                      const isOwn = pred.user_id === user.id;
+                      const daysLeft = Math.max(0, Math.ceil((new Date(pred.deadline + 'T00:00:00') - new Date()) / 86400000));
+                      const totalDays = Math.ceil((new Date(pred.deadline + 'T00:00:00') - new Date(pred.created_at)) / 86400000);
+                      const progress = totalDays > 0 ? Math.min(1, 1 - daysLeft / totalDays) : 1;
+                      const diff = (pred.predicted_weight - pred.start_weight).toFixed(1);
+                      const direction = diff > 0 ? '+' : '';
+
+                      return (
+                        <div key={pred.id} className={`bg-surface-mid rounded-sm border ${isOwn ? 'border-accent/20' : 'border-white/5'} overflow-hidden`}>
+                          <div className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar url={profile?.avatar_url} name={profile?.display_name || '?'} size="sm" />
+                                <div>
+                                  <p className="text-cream text-sm font-medium">
+                                    {isOwn ? 'You' : profile?.display_name || 'Unknown'}
+                                  </p>
+                                  <p className="text-cream/30 text-[10px]">{formatDateShort(pred.created_at?.slice(0, 10))}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-display text-xl text-cream">{formatWeight(pred.predicted_weight, pred.unit)}</p>
+                                <p className="text-cream/30 text-[10px]">from {formatWeight(pred.start_weight, pred.unit)} ({direction}{diff})</p>
+                              </div>
+                            </div>
+
+                            {pred.message && (
+                              <p className="text-cream/50 text-xs mb-3 italic">"{pred.message}"</p>
+                            )}
+
+                            {/* Progress bar */}
+                            <div className="mb-3">
+                              <div className="flex justify-between text-[10px] text-cream/30 mb-1">
+                                <span>{daysLeft} days left</span>
+                                <span>Due {formatDateShort(pred.deadline)}</span>
+                              </div>
+                              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-accent rounded-full transition-all"
+                                  style={{ width: `${progress * 100}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Voting (can't vote on own prediction) */}
+                            {!isOwn && (
+                              <div>
+                                <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-2">What do you think?</p>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {VOTE_OPTIONS.map(opt => {
+                                    const voteCount = votes.filter(v => v.vote === opt.key).length;
+                                    const isMyVote = myVote?.vote === opt.key;
+                                    return (
+                                      <button
+                                        key={opt.key}
+                                        onClick={() => handleVote(pred.id, opt.key)}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-sm text-xs transition-colors ${
+                                          isMyVote
+                                            ? 'bg-accent/15 border border-accent/30'
+                                            : 'bg-white/5 border border-white/5 hover:border-accent/20'
+                                        }`}
+                                      >
+                                        <span>{opt.emoji}</span>
+                                        <span className={isMyVote ? 'text-accent font-medium' : 'text-cream/60'}>{opt.label}</span>
+                                        {voteCount > 0 && (
+                                          <span className={`ml-auto text-[10px] ${isMyVote ? 'text-accent' : 'text-cream/30'}`}>{voteCount}</span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Show vote counts for own prediction */}
+                            {isOwn && votes.length > 0 && (
+                              <div>
+                                <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-2">Circle thinks</p>
+                                <div className="flex gap-2 flex-wrap">
+                                  {VOTE_OPTIONS.map(opt => {
+                                    const voteCount = votes.filter(v => v.vote === opt.key).length;
+                                    if (voteCount === 0) return null;
+                                    return (
+                                      <span key={opt.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-xs">
+                                        <span>{opt.emoji}</span>
+                                        <span className="text-cream/50">{opt.label}</span>
+                                        <span className="text-cream/30">{voteCount}</span>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Resolved Predictions */}
+              {filteredPredictions.filter(p => p.status === 'resolved').length > 0 && (
+                <div>
+                  <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-2">Resolved</p>
+                  <div className="space-y-3">
+                    {filteredPredictions.filter(p => p.status === 'resolved').map(pred => {
+                      const profile = members.find(m => m.user_id === pred.user_id)?.profiles;
+                      const votes = predictionVotes[pred.id] || [];
+                      const isOwn = pred.user_id === user.id;
+                      const resultOption = VOTE_OPTIONS.find(o => o.key === pred.result);
+                      const correctVoters = votes.filter(v => v.vote === pred.result);
+
+                      return (
+                        <div key={pred.id} className={`bg-surface-mid rounded-sm border ${isOwn ? 'border-accent/20' : 'border-white/5'} overflow-hidden`}>
+                          <div className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Avatar url={profile?.avatar_url} name={profile?.display_name || '?'} size="sm" />
+                                <div>
+                                  <p className="text-cream text-sm font-medium">
+                                    {isOwn ? 'You' : profile?.display_name || 'Unknown'}
+                                  </p>
+                                  <p className="text-cream/30 text-[10px]">Resolved {pred.resolved_at ? formatDateShort(pred.resolved_at.slice(0, 10)) : ''}</p>
+                                </div>
+                              </div>
+                              {resultOption && (
+                                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                                  pred.result === 'nails_it' ? 'bg-success/15 border border-success/30 text-success' :
+                                  pred.result === 'crushes_it' ? 'bg-accent/15 border border-accent/30 text-accent' :
+                                  pred.result === 'overshoots' ? 'bg-warning/15 border border-warning/30 text-warning' :
+                                  'bg-white/5 border border-white/10 text-cream/50'
+                                }`}>
+                                  <span>{resultOption.emoji}</span> {resultOption.label}
+                                </span>
+                              )}
+                            </div>
+
+                            {pred.message && (
+                              <p className="text-cream/50 text-xs mb-3 italic">"{pred.message}"</p>
+                            )}
+
+                            <div className="grid grid-cols-3 gap-px bg-white/5 rounded-sm overflow-hidden mb-3">
+                              <div className="bg-surface-up p-2.5 text-center">
+                                <p className="text-cream/40 text-[9px] uppercase">Predicted</p>
+                                <p className="font-display text-lg text-cream">{formatWeight(pred.predicted_weight, pred.unit)}</p>
+                              </div>
+                              <div className="bg-surface-up p-2.5 text-center">
+                                <p className="text-cream/40 text-[9px] uppercase">Actual</p>
+                                <p className="font-display text-lg text-cream">{formatWeight(pred.actual_weight, pred.unit)}</p>
+                              </div>
+                              <div className="bg-surface-up p-2.5 text-center">
+                                <p className="text-cream/40 text-[9px] uppercase">Diff</p>
+                                <p className={`font-display text-lg ${
+                                  Math.abs(pred.actual_weight - pred.predicted_weight) <= 0.5 ? 'text-success' : 'text-cream/50'
+                                }`}>
+                                  {Math.abs(pred.actual_weight - pred.predicted_weight).toFixed(1)} {pred.unit}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Who called it right */}
+                            {votes.length > 0 && (
+                              <div>
+                                <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-1.5">Who called it?</p>
+                                <div className="space-y-1">
+                                  {VOTE_OPTIONS.map(opt => {
+                                    const optVoters = votes.filter(v => v.vote === opt.key);
+                                    if (optVoters.length === 0) return null;
+                                    const isCorrect = opt.key === pred.result;
+                                    return (
+                                      <div key={opt.key} className={`flex items-center gap-2 text-xs px-2 py-1 rounded-sm ${isCorrect ? 'bg-success/10' : ''}`}>
+                                        <span>{opt.emoji}</span>
+                                        <span className={isCorrect ? 'text-success' : 'text-cream/40'}>{opt.label}</span>
+                                        <span className="text-cream/30 ml-auto">
+                                          {optVoters.map(v => {
+                                            const vProfile = members.find(m => m.user_id === v.user_id)?.profiles;
+                                            return vProfile?.display_name || 'Unknown';
+                                          }).join(', ')}
+                                          {isCorrect && ' ✓'}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Predictor Leaderboard */}
+              {predictorStats.length > 0 && (
+                <div className="bg-surface-mid rounded-sm border border-white/5 p-4">
+                  <p className="text-cream/40 text-[10px] uppercase tracking-wider mb-2">Best Predictors</p>
+                  <div className="space-y-1.5">
+                    {predictorStats.slice(0, 5).map((stat, i) => {
+                      const profile = members.find(m => m.user_id === stat.userId)?.profiles;
+                      return (
+                        <div key={stat.userId} className="flex items-center gap-2 text-xs">
+                          <span className="text-cream/30 w-4">{i + 1}.</span>
+                          <Avatar url={profile?.avatar_url} name={profile?.display_name || '?'} size="xs" />
+                          <span className="text-cream">{stat.userId === user.id ? 'You' : profile?.display_name || 'Unknown'}</span>
+                          <span className="text-cream/30 ml-auto">{stat.correct}/{stat.total} ({Math.round(stat.accuracy * 100)}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {filteredPredictions.length === 0 && !showNewPrediction && (
+                <p className="text-cream/40 text-center py-8 text-sm">No predictions yet. Be the first to call your shot!</p>
               )}
             </div>
           )}
