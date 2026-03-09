@@ -113,6 +113,7 @@ export default function App() {
   }, []);
 
   const toastTimerRef = React.useRef(null);
+  const visitedViews = useRef(new Set(['dashboard']));
 
   const showToast = useCallback((message, type = 'success') => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -191,7 +192,6 @@ export default function App() {
     );
   }
 
-  const visitedViews = useRef(new Set(['dashboard']));
   if (view) visitedViews.current.add(view);
 
   const VIEW_COMPONENTS = {
