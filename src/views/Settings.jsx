@@ -30,11 +30,23 @@ function compressImage(file, maxSize = 800, quality = 0.8) {
   });
 }
 
+const GRAPH_COLORS = [
+  { value: '#f04a0e', label: 'Orange' },
+  { value: '#3b82f6', label: 'Blue' },
+  { value: '#22c55e', label: 'Green' },
+  { value: '#a855f7', label: 'Purple' },
+  { value: '#f59e0b', label: 'Amber' },
+  { value: '#ec4899', label: 'Pink' },
+  { value: '#06b6d4', label: 'Cyan' },
+  { value: '#ef4444', label: 'Red' },
+];
+
 export default function Settings() {
   const { user, displayName, unit, syncing } = useAppData();
   const { signOut, sync, changeUnit, showToast, reload } = useAppActions();
   const [confirmClear, setConfirmClear] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [graphColor, setGraphColor] = useState('#f04a0e');
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem('scale-push-enabled') === '1');
   const [pushLoading, setPushLoading] = useState(false);
 
@@ -42,13 +54,27 @@ export default function Settings() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('avatar_url')
+        .select('avatar_url, graph_color')
         .eq('id', user.id)
         .single();
       if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      if (data?.graph_color) setGraphColor(data.graph_color);
     };
     loadProfile();
   }, [user.id]);
+
+  const handleGraphColorChange = async (color) => {
+    setGraphColor(color);
+    try {
+      await supabase
+        .from('profiles')
+        .update({ graph_color: color })
+        .eq('id', user.id);
+      showToast('Graph color updated');
+    } catch {
+      showToast('Failed to save color', 'error');
+    }
+  };
 
   const handleAvatarUpload = async (file) => {
     try {
@@ -193,6 +219,25 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Graph Color */}
+        <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 desktop:mb-0">
+          <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Graph Color</p>
+          <p className="text-cream/30 text-[10px] mb-3">Your line color on circle comparison charts</p>
+          <div className="flex gap-2 flex-wrap">
+            {GRAPH_COLORS.map(c => (
+              <button
+                key={c.value}
+                onClick={() => handleGraphColorChange(c.value)}
+                className={`w-8 h-8 rounded-full transition-all ${graphColor === c.value ? 'ring-2 ring-cream ring-offset-2 ring-offset-surface-mid scale-110' : 'hover:scale-110'}`}
+                style={{ backgroundColor: c.value }}
+                title={c.label}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="desktop:grid desktop:grid-cols-2 desktop:gap-4 mt-0 desktop:mt-4">
         {/* Sync */}
         <div className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 desktop:mb-0">
           <p className="text-cream/50 text-xs uppercase tracking-wider mb-3">Cloud Sync</p>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
-import { formatWeight, formatDateShort, getWeightChange, getStreak, generateId, todayStr } from '../utils';
+import { formatWeight, formatDateShort, getWeightChange, getStreak, generateId, todayStr, aggregateDaily } from '../utils';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import Avatar from '../components/Avatar';
 
 const REACTIONS = [
@@ -11,6 +12,8 @@ const REACTIONS = [
   { emoji: '🎯', label: 'Target' },
   { emoji: '❤️', label: 'Love' }
 ];
+
+const DEFAULT_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#f04a0e'];
 
 export default function Circle() {
   const { user, unit, weights: localWeights, displayName, pendingInvite } = useAppData();
@@ -26,7 +29,9 @@ export default function Circle() {
   const [joinCode, setJoinCode] = useState('');
   const [reactions, setReactions] = useState({});
   const [showReactionPicker, setShowReactionPicker] = useState(null);
-  const [selectedCircle, setSelectedCircle] = useState(null); // null = All Circles
+  const [selectedCircle, setSelectedCircle] = useState(null);
+  const [compareRange, setCompareRange] = useState('7');
+  const [showCircleInfo, setShowCircleInfo] = useState(false);
 
   const loadCircleData = useCallback(async () => {
     setLoading(true);
@@ -52,13 +57,12 @@ export default function Circle() {
 
       const memberIds = [...new Set((allMembers || []).map(m => m.user_id))];
 
-      // Fetch profiles and weight entries in parallel (both only need memberIds)
       let profileRows = [];
       let sharedWeights = [];
       if (memberIds.length > 0) {
         const [profileRes, weightsRes] = await Promise.all([
-          supabase.from('profiles').select('id, display_name, avatar_url').in('id', memberIds),
-          supabase.from('weight_entries').select('*').in('user_id', memberIds).order('date', { ascending: false }).limit(200),
+          supabase.from('profiles').select('id, display_name, avatar_url, graph_color').in('id', memberIds),
+          supabase.from('weight_entries').select('*').in('user_id', memberIds).order('date', { ascending: false }).limit(500),
         ]);
         if (profileRes.error) console.error('Profiles query error:', profileRes.error);
         if (weightsRes.error) console.error('Weight entries query error:', weightsRes.error);
@@ -71,12 +75,11 @@ export default function Circle() {
 
       const membersWithProfiles = (allMembers || []).map(m => ({
         ...m,
-        profiles: profileById[m.user_id] || { display_name: 'Unknown', avatar_url: null }
+        profiles: profileById[m.user_id] || { display_name: 'Unknown', avatar_url: null, graph_color: null }
       }));
 
       setMembers(membersWithProfiles);
 
-      // Load reactions
       const entryIds = sharedWeights.map(w => w.id);
       if (entryIds.length) {
         const { data: cheerData } = await supabase
@@ -91,7 +94,6 @@ export default function Circle() {
         setReactions(reactionMap);
       }
 
-      // Build feed with profile info
       const profileMap = {};
       const avatarMap = {};
       membersWithProfiles.forEach(m => {
@@ -99,24 +101,18 @@ export default function Circle() {
         avatarMap[m.user_id] = m.profiles?.avatar_url || null;
       });
 
-      // Merge local weights for current user that may not be in cloud yet
       const cloudIds = new Set(sharedWeights.map(w => w.id));
       const localOnly = localWeights
         .filter(w => !cloudIds.has(w.id))
         .map(w => ({
-          id: w.id,
-          user_id: user.id,
-          date: w.date,
-          weight: w.weight,
-          unit: w.unit,
-          notes: w.notes,
-          is_morning: w.isMorning || false,
+          id: w.id, user_id: user.id, date: w.date, weight: w.weight,
+          unit: w.unit, notes: w.notes, is_morning: w.isMorning || false,
           updated_at: new Date(w.updatedAt).toISOString()
         }));
 
       const allWeights = [...sharedWeights, ...localOnly]
         .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, 200);
+        .slice(0, 500);
 
       const feedItems = allWeights.map(w => ({
         ...w,
@@ -135,35 +131,24 @@ export default function Circle() {
 
   useEffect(() => { loadCircleData(); }, [loadCircleData]);
 
-  // Auto-join from invite URL
   useEffect(() => {
     if (!pendingInvite || loading) return;
     const autoJoin = async () => {
       try {
         const { data: circle, error } = await supabase
-          .from('circles')
-          .select('id')
-          .eq('invite_code', pendingInvite.trim().toUpperCase())
-          .single();
+          .from('circles').select('id')
+          .eq('invite_code', pendingInvite.trim().toUpperCase()).single();
         if (error || !circle) { showToast('Invalid invite code', 'error'); return; }
-
         const { error: joinErr } = await supabase.from('circle_members').insert({
-          circle_id: circle.id,
-          user_id: user.id,
-          role: 'member'
+          circle_id: circle.id, user_id: user.id, role: 'member'
         });
         if (joinErr) {
           if (joinErr.code === '23505') showToast('Already in this circle');
           else throw joinErr;
-        } else {
-          showToast('Joined circle!');
-        }
+        } else { showToast('Joined circle!'); }
         await loadCircleData();
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        clearPendingInvite();
-      }
+      } catch (err) { showToast(err.message, 'error'); }
+      finally { clearPendingInvite(); }
     };
     autoJoin();
   }, [pendingInvite, loading, user.id, showToast, clearPendingInvite, loadCircleData]);
@@ -174,28 +159,18 @@ export default function Circle() {
     try {
       const inviteCode = generateId().toUpperCase().slice(0, 6);
       const { data: circle, error } = await supabase
-        .from('circles')
-        .insert({ name: circleName.trim(), created_by: user.id, invite_code: inviteCode })
-        .select()
-        .single();
+        .from('circles').insert({ name: circleName.trim(), created_by: user.id, invite_code: inviteCode })
+        .select().single();
       if (error) throw error;
-
       const { error: memberErr } = await supabase.from('circle_members').insert({
-        circle_id: circle.id,
-        user_id: user.id,
-        role: 'owner'
+        circle_id: circle.id, user_id: user.id, role: 'owner'
       });
       if (memberErr) throw memberErr;
-
       showToast('Circle created!');
       setCircleName('');
       setShowCreate(false);
-      setTab('circles');
-      // Await full reload so creator appears in member list
       await loadCircleData();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
   const joinCircle = async (e) => {
@@ -203,46 +178,34 @@ export default function Circle() {
     if (!joinCode.trim()) return;
     try {
       const { data: circle, error } = await supabase
-        .from('circles')
-        .select('id')
-        .eq('invite_code', joinCode.trim().toUpperCase())
-        .single();
+        .from('circles').select('id')
+        .eq('invite_code', joinCode.trim().toUpperCase()).single();
       if (error || !circle) { showToast('Invalid invite code', 'error'); return; }
-
       const { error: joinErr } = await supabase.from('circle_members').insert({
-        circle_id: circle.id,
-        user_id: user.id,
-        role: 'member'
+        circle_id: circle.id, user_id: user.id, role: 'member'
       });
       if (joinErr) {
         if (joinErr.code === '23505') showToast('Already in this circle', 'warning');
         else throw joinErr;
         return;
       }
-
       showToast('Joined circle!');
       setJoinCode('');
       setShowJoin(false);
       await loadCircleData();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
   const handleReaction = async (entryId, emoji) => {
     try {
       const entryReactions = reactions[entryId] || [];
       const existing = entryReactions.find(r => r.user_id === user.id && r.emoji === emoji);
-
       if (existing) {
         await supabase.from('cheers').delete()
-          .eq('entry_id', entryId)
-          .eq('user_id', user.id)
-          .eq('emoji', emoji);
+          .eq('entry_id', entryId).eq('user_id', user.id).eq('emoji', emoji);
       } else {
         await supabase.from('cheers').insert({ entry_id: entryId, user_id: user.id, emoji });
       }
-
       setReactions(prev => {
         const list = [...(prev[entryId] || [])];
         if (existing) {
@@ -251,9 +214,7 @@ export default function Circle() {
         return { ...prev, [entryId]: [...list, { user_id: user.id, emoji }] };
       });
       setShowReactionPicker(null);
-    } catch (err) {
-      showToast('Failed to react', 'error');
-    }
+    } catch (err) { showToast('Failed to react', 'error'); }
   };
 
   const leaveCircle = async (circleId) => {
@@ -261,12 +222,9 @@ export default function Circle() {
       await supabase.from('circle_members').delete().eq('circle_id', circleId).eq('user_id', user.id);
       showToast('Left circle');
       await loadCircleData();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
-  // Filter members and feed by selected circle
   const filteredMembers = useMemo(() => {
     if (!selectedCircle) return members;
     return members.filter(m => m.circle_id === selectedCircle);
@@ -278,24 +236,58 @@ export default function Circle() {
     return feed.filter(f => circleMemberIds.has(f.user_id));
   }, [feed, selectedCircle, filteredMembers]);
 
-  // Compute per-member stats for the Members tab
+  // Compute feed badges (milestones, streaks, new lows)
+  const feedWithBadges = useMemo(() => {
+    // Group all entries by user to compute context
+    const byUser = {};
+    filteredFeed.forEach(e => {
+      if (!byUser[e.user_id]) byUser[e.user_id] = [];
+      byUser[e.user_id].push(e);
+    });
+
+    return filteredFeed.map(entry => {
+      const userEntries = byUser[entry.user_id] || [];
+      const idx = userEntries.indexOf(entry);
+      const badges = [];
+
+      // New personal low (within user's history)
+      const allBefore = userEntries.slice(idx);
+      if (allBefore.length > 1) {
+        const minBefore = Math.min(...allBefore.slice(1).map(e => e.weight));
+        if (entry.weight < minBefore) badges.push({ icon: '⬇️', text: 'New Low' });
+      }
+
+      // Streak milestones
+      const entriesBefore = userEntries.slice(idx);
+      const streak = getStreak(entriesBefore);
+      if (streak > 0 && streak % 7 === 0) badges.push({ icon: '🔥', text: `${streak}-day streak` });
+
+      // Entry count milestones
+      const totalAfter = userEntries.length - idx;
+      if ([10, 25, 50, 100, 200].includes(totalAfter)) badges.push({ icon: '🏆', text: `${totalAfter} entries` });
+
+      // Morning check-in
+      if (entry.is_morning) badges.push({ icon: '🌅', text: 'Morning weigh-in' });
+
+      return { ...entry, badges };
+    });
+  }, [filteredFeed]);
+
   const memberStats = useMemo(() => {
     let unique = filteredMembers.filter((m, i, arr) => arr.findIndex(x => x.user_id === m.user_id) === i);
-    // Ensure current user always appears in member list
     const activeCircles = selectedCircle ? circles.filter(c => c.id === selectedCircle) : circles;
     if (activeCircles.length > 0 && !unique.some(m => m.user_id === user.id)) {
       unique = [...unique, {
-        user_id: user.id,
-        circle_id: activeCircles[0].id,
+        user_id: user.id, circle_id: activeCircles[0].id,
         role: activeCircles[0].role || 'member',
-        profiles: { display_name: displayName, avatar_url: null }
+        profiles: { display_name: displayName, avatar_url: null, graph_color: null }
       }];
     }
     const today = todayStr();
     const d7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
-    return unique.map(member => {
+    return unique.map((member, i) => {
       const allWeights = filteredFeed.filter(f => f.user_id === member.user_id);
       const latest = allWeights[0];
       const streak = getStreak(allWeights);
@@ -305,23 +297,42 @@ export default function Circle() {
       const change7 = getWeightChange(last7);
       const change30 = getWeightChange(last30);
       const loggedToday = allWeights.some(w => w.date === today);
-
-      // Mini trend: last 7 daily weights for sparkline
       const recentDays = allWeights.slice(0, 7).reverse();
+      const color = member.profiles?.graph_color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
 
       return {
-        ...member,
-        latest,
-        streak,
-        totalEntries,
-        change7,
-        change30,
-        loggedToday,
-        recentDays,
-        isYou: member.user_id === user.id,
+        ...member, latest, streak, totalEntries, change7, change30,
+        loggedToday, recentDays, isYou: member.user_id === user.id, color,
       };
-    }).sort((a, b) => b.streak - a.streak); // Sort by streak
+    }).sort((a, b) => b.streak - a.streak);
   }, [filteredMembers, filteredFeed, user.id, circles, selectedCircle, displayName]);
+
+  // Compare chart data — one line per member
+  const compareData = useMemo(() => {
+    if (tab !== 'compare') return [];
+    const days = parseInt(compareRange);
+    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const dateSet = new Set();
+    const byUserDate = {};
+
+    filteredFeed.forEach(e => {
+      if (e.date < cutoff) return;
+      dateSet.add(e.date);
+      const key = `${e.user_id}:${e.date}`;
+      // Keep first (most recent) entry per user per day
+      if (!byUserDate[key]) byUserDate[key] = e.weight;
+    });
+
+    const dates = [...dateSet].sort();
+    return dates.map(date => {
+      const point = { date };
+      memberStats.forEach(m => {
+        const key = `${m.user_id}:${date}`;
+        if (byUserDate[key] != null) point[m.user_id] = byUserDate[key];
+      });
+      return point;
+    });
+  }, [tab, compareRange, filteredFeed, memberStats]);
 
   if (loading) {
     return (
@@ -337,6 +348,11 @@ export default function Circle() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold text-cream">My Circle</h1>
         <div className="flex gap-2">
+          {circles.length > 0 && (
+            <button onClick={() => setShowCircleInfo(!showCircleInfo)} className="text-cream/40 hover:text-cream text-xs transition-colors">
+              {showCircleInfo ? 'Hide info' : 'Manage'}
+            </button>
+          )}
           <button onClick={() => { setShowJoin(true); setShowCreate(false); }} className="text-accent text-xs font-medium hover:underline">Join</button>
           <button onClick={() => { setShowCreate(true); setShowJoin(false); }} className="bg-accent hover:bg-accent-dark text-white px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors">
             + Create
@@ -344,18 +360,48 @@ export default function Circle() {
         </div>
       </div>
 
+      {/* Circle Info Panel (replaces old Circles tab) */}
+      {showCircleInfo && circles.length > 0 && (
+        <div className="space-y-2 mb-4 animate-slide-up">
+          {circles.map(circle => {
+            const circleMembers = members.filter(m => m.circle_id === circle.id);
+            return (
+              <div key={circle.id} className="bg-surface-mid rounded-sm p-3 border border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex -space-x-1.5">
+                    {circleMembers.slice(0, 4).map(m => (
+                      <Avatar key={m.user_id} url={m.profiles?.avatar_url} name={m.profiles?.display_name || '?'} size="xs" />
+                    ))}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-cream text-sm font-medium truncate">{circle.name}</p>
+                    <p className="text-cream/30 text-[10px]">{circleMembers.length} members · Code: {circle.invite_code}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}?join=${circle.invite_code}`);
+                      showToast('Invite link copied!');
+                    }}
+                    className="text-accent text-[10px] hover:underline"
+                  >
+                    Copy link
+                  </button>
+                  <button onClick={() => leaveCircle(circle.id)} className="text-cream/20 hover:text-danger text-[10px]">Leave</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Create Circle Form */}
       {showCreate && (
         <form onSubmit={createCircle} className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 animate-slide-up">
           <p className="text-cream text-sm font-medium mb-3">Create a Circle</p>
-          <input
-            type="text"
-            value={circleName}
-            onChange={e => setCircleName(e.target.value)}
-            placeholder="Circle name (e.g. Gym Buddies)"
-            className="w-full mb-3"
-            autoFocus
-          />
+          <input type="text" value={circleName} onChange={e => setCircleName(e.target.value)}
+            placeholder="Circle name (e.g. Gym Buddies)" className="w-full mb-3" autoFocus />
           <div className="flex gap-2">
             <button type="submit" className="bg-accent text-white px-4 py-2 rounded-sm text-sm font-semibold">Create</button>
             <button type="button" onClick={() => setShowCreate(false)} className="text-cream/40 text-sm">Cancel</button>
@@ -367,15 +413,9 @@ export default function Circle() {
       {showJoin && (
         <form onSubmit={joinCircle} className="bg-surface-mid rounded-sm p-4 border border-white/5 mb-4 animate-slide-up">
           <p className="text-cream text-sm font-medium mb-3">Join a Circle</p>
-          <input
-            type="text"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value)}
-            placeholder="Enter 6-character invite code"
-            maxLength={6}
-            className="w-full mb-3 uppercase tracking-widest text-center font-mono"
-            autoFocus
-          />
+          <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value)}
+            placeholder="Enter 6-character invite code" maxLength={6}
+            className="w-full mb-3 uppercase tracking-widest text-center font-mono" autoFocus />
           <div className="flex gap-2">
             <button type="submit" className="bg-accent text-white px-4 py-2 rounded-sm text-sm font-semibold">Join</button>
             <button type="button" onClick={() => setShowJoin(false)} className="text-cream/40 text-sm">Cancel</button>
@@ -389,12 +429,8 @@ export default function Circle() {
           <p className="text-cream font-medium mb-1">No circles yet</p>
           <p className="text-cream/40 text-sm mb-4">Create a circle and invite friends to share progress and stay accountable together.</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => setShowCreate(true)} className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors">
-              Create Circle
-            </button>
-            <button onClick={() => setShowJoin(true)} className="bg-surface-up border border-white/10 text-cream px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors hover:border-accent/30">
-              Join Circle
-            </button>
+            <button onClick={() => setShowCreate(true)} className="bg-accent hover:bg-accent-dark text-white px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors">Create Circle</button>
+            <button onClick={() => setShowJoin(true)} className="bg-surface-up border border-white/10 text-cream px-5 py-2.5 rounded-sm font-semibold text-sm transition-colors hover:border-accent/30">Join Circle</button>
           </div>
         </div>
       ) : (
@@ -409,16 +445,14 @@ export default function Circle() {
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
               >
                 <option value="">All Circles</option>
-                {circles.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           )}
 
           {/* Tab Bar */}
           <div className="flex gap-1 bg-surface-up rounded-sm p-0.5 mb-4">
-            {[['feed', 'Feed'], ['members', 'Members'], ['circles', 'Circles']].map(([id, label]) => (
+            {[['feed', 'Feed'], ['members', 'Members'], ['compare', 'Compare']].map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -434,10 +468,10 @@ export default function Circle() {
           {/* Feed Tab */}
           {tab === 'feed' && (
             <div className="space-y-3 desktop:grid desktop:grid-cols-2 desktop:gap-3 desktop:space-y-0">
-              {filteredFeed.length === 0 ? (
+              {feedWithBadges.length === 0 ? (
                 <p className="text-cream/40 text-center py-8 text-sm desktop:col-span-2">No entries shared yet. Log your weight and it will appear here!</p>
               ) : (
-                filteredFeed.map(entry => {
+                feedWithBadges.map(entry => {
                   const entryReactions = reactions[entry.id] || [];
                   const groupedReactions = {};
                   entryReactions.forEach(r => {
@@ -461,6 +495,18 @@ export default function Circle() {
                           {formatWeight(entry.weight, entry.unit || unit)}
                         </span>
                       </div>
+
+                      {/* Badges */}
+                      {entry.badges.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {entry.badges.map((b, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 border border-warning/20 text-[10px] text-warning font-medium">
+                              <span>{b.icon}</span> {b.text}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       {entry.notes && <p className="text-cream/50 text-xs mb-2">{entry.notes}</p>}
 
                       {/* Reactions */}
@@ -483,7 +529,6 @@ export default function Circle() {
                           );
                         })}
 
-                        {/* Add reaction button */}
                         <div className="relative">
                           <button
                             onClick={() => setShowReactionPicker(showReactionPicker === entry.id ? null : entry.id)}
@@ -514,7 +559,7 @@ export default function Circle() {
             </div>
           )}
 
-          {/* Members Tab - Rich Progress Cards */}
+          {/* Members Tab */}
           {tab === 'members' && (
             <div className="space-y-3">
               {memberStats.length === 0 ? (
@@ -522,37 +567,32 @@ export default function Circle() {
               ) : (
                 memberStats.map(member => (
                   <div key={member.user_id} className={`bg-surface-mid rounded-sm border ${member.isYou ? 'border-accent/20' : 'border-white/5'}`}>
-                    {/* Member header */}
                     <div className="flex items-center justify-between p-4 pb-3">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <Avatar
-                            url={member.profiles?.avatar_url}
-                            name={member.profiles?.display_name || '?'}
-                            size="md"
-                          />
+                          <Avatar url={member.profiles?.avatar_url} name={member.profiles?.display_name || '?'} size="md" />
                           {member.loggedToday && (
                             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-surface-mid" />
                           )}
                         </div>
                         <div>
-                          <p className="text-cream font-medium text-sm">
-                            {member.profiles?.display_name || 'Unknown'}
-                            {member.isYou && <span className="text-accent/60 ml-1">(you)</span>}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-cream font-medium text-sm">
+                              {member.profiles?.display_name || 'Unknown'}
+                              {member.isYou && <span className="text-accent/60 ml-1">(you)</span>}
+                            </p>
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: member.color }} title="Graph color" />
+                          </div>
                           <p className="text-cream/30 text-[10px]">
                             {member.loggedToday ? 'Logged today' : member.latest ? `Last log ${formatDateShort(member.latest.date)}` : 'No entries yet'}
                           </p>
                         </div>
                       </div>
                       {member.latest && (
-                        <div className="text-right">
-                          <p className="font-display text-2xl text-cream">{formatWeight(member.latest.weight, member.latest.unit || unit)}</p>
-                        </div>
+                        <p className="font-display text-2xl text-cream">{formatWeight(member.latest.weight, member.latest.unit || unit)}</p>
                       )}
                     </div>
 
-                    {/* Stats grid */}
                     <div className="grid grid-cols-4 gap-px bg-white/5 border-t border-white/5">
                       <div className="bg-surface-mid p-2.5 text-center">
                         <p className="text-cream/40 text-[9px] uppercase tracking-wider">Streak</p>
@@ -573,9 +613,7 @@ export default function Circle() {
                             </p>
                             <p className="text-cream/30 text-[9px]">{unit}</p>
                           </>
-                        ) : (
-                          <p className="text-cream/20 text-xs mt-1">--</p>
-                        )}
+                        ) : <p className="text-cream/20 text-xs mt-1">--</p>}
                       </div>
                       <div className="bg-surface-mid p-2.5 text-center">
                         <p className="text-cream/40 text-[9px] uppercase tracking-wider">30 Day</p>
@@ -586,20 +624,17 @@ export default function Circle() {
                             </p>
                             <p className="text-cream/30 text-[9px]">{unit}</p>
                           </>
-                        ) : (
-                          <p className="text-cream/20 text-xs mt-1">--</p>
-                        )}
+                        ) : <p className="text-cream/20 text-xs mt-1">--</p>}
                       </div>
                     </div>
 
-                    {/* Mini sparkline trend */}
                     {member.recentDays.length > 1 && (
                       <div className="px-4 py-2.5 border-t border-white/5">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-cream/30 text-[9px] uppercase tracking-wider">Recent trend</span>
                           <span className="text-cream/30 text-[9px]">Last {member.recentDays.length} entries</span>
                         </div>
-                        <MiniSparkline data={member.recentDays} />
+                        <MiniSparkline data={member.recentDays} color={member.color} />
                       </div>
                     )}
                   </div>
@@ -608,50 +643,79 @@ export default function Circle() {
             </div>
           )}
 
-          {/* Circles Tab */}
-          {tab === 'circles' && (
-            <div className="space-y-3">
-              {circles.map(circle => {
-                const circleMembers = members.filter(m => m.circle_id === circle.id);
-                return (
-                  <div key={circle.id} className="bg-surface-mid rounded-sm p-4 border border-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-cream font-medium">{circle.name}</h3>
-                      <span className="text-cream/30 text-xs">{circle.role}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex -space-x-2">
-                          {circleMembers.slice(0, 5).map(m => (
-                            <Avatar
-                              key={m.user_id}
-                              url={m.profiles?.avatar_url}
-                              name={m.profiles?.display_name || '?'}
-                              size="xs"
-                            />
-                          ))}
-                        </div>
-                        <span className="text-cream/40 text-xs">{circleMembers.length} members</span>
-                        <span className="text-cream/20">·</span>
-                        <span className="text-cream/40 text-xs font-mono tracking-wider">Code: {circle.invite_code}</span>
-                      </div>
-                      <button onClick={() => leaveCircle(circle.id)} className="text-cream/20 hover:text-danger text-xs">
-                        Leave
-                      </button>
-                    </div>
+          {/* Compare Tab */}
+          {tab === 'compare' && (
+            <div className="bg-surface-mid rounded-sm p-4 border border-white/5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-cream/50 text-xs uppercase tracking-wider">Weight Comparison</p>
+                <div className="flex gap-1 bg-surface-up rounded-sm p-0.5">
+                  {[['7', '7d'], ['30', '30d'], ['90', '90d']].map(([val, label]) => (
                     <button
-                      onClick={() => {
-                        const url = `${window.location.origin}?join=${circle.invite_code}`;
-                        navigator.clipboard.writeText(url);
-                        showToast('Invite link copied!');
-                      }}
-                      className="mt-2 text-accent text-xs hover:underline"
+                      key={val}
+                      onClick={() => setCompareRange(val)}
+                      className={`px-2 py-0.5 rounded-sm text-[10px] font-medium transition-colors ${
+                        compareRange === val ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'
+                      }`}
                     >
-                      Copy invite link
+                      {label}
                     </button>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
+
+              {compareData.length > 1 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={compareData}>
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDateShort}
+                      tick={{ fill: '#ede8df66', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      domain={['auto', 'auto']}
+                      tick={{ fill: '#ede8df66', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={40}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
+                      labelFormatter={formatDateShort}
+                      formatter={(value, name) => {
+                        const m = memberStats.find(ms => ms.user_id === name);
+                        return [formatWeight(value, unit), m?.profiles?.display_name || 'Unknown'];
+                      }}
+                    />
+                    {memberStats.map(m => (
+                      <Line
+                        key={m.user_id}
+                        type="monotone"
+                        dataKey={m.user_id}
+                        stroke={m.color}
+                        strokeWidth={m.isYou ? 2.5 : 1.5}
+                        dot={{ r: 2.5, fill: m.color }}
+                        connectNulls
+                        activeDot={{ r: 4, stroke: '#ede8df', strokeWidth: 1.5 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-cream/40 text-center py-12 text-sm">Not enough data to compare yet.</p>
+              )}
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 mt-3 justify-center">
+                {memberStats.map(m => (
+                  <span key={m.user_id} className="flex items-center gap-1.5 text-[10px] text-cream/50">
+                    <span className="w-3 h-0.5 rounded" style={{ backgroundColor: m.color }} />
+                    {m.isYou ? 'You' : m.profiles?.display_name || 'Unknown'}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </>
@@ -660,7 +724,7 @@ export default function Circle() {
   );
 }
 
-function MiniSparkline({ data }) {
+function MiniSparkline({ data, color }) {
   if (!data || data.length < 2) return null;
   const weights = data.map(d => d.weight);
   const min = Math.min(...weights);
@@ -678,27 +742,19 @@ function MiniSparkline({ data }) {
 
   const first = weights[0];
   const last = weights[weights.length - 1];
-  const trending = last < first ? 'text-success' : last > first ? 'text-danger' : 'text-cream/40';
+  const strokeColor = color || (last < first ? '#34d399' : last > first ? '#f87171' : '#ede8df66');
 
   return (
     <div className="flex items-center gap-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="flex-1 h-8" preserveAspectRatio="none">
-        <polyline
-          points={points}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={trending}
-        />
+        <polyline points={points} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         {weights.map((v, i) => {
           const x = i * step;
           const y = h - ((v - min) / range) * (h - 4) - 2;
-          return <circle key={i} cx={x} cy={y} r="2.5" fill="currentColor" className={trending} />;
+          return <circle key={i} cx={x} cy={y} r="2.5" fill={strokeColor} />;
         })}
       </svg>
-      <div className={`text-xs font-medium ${trending} whitespace-nowrap`}>
+      <div className="text-xs font-medium whitespace-nowrap" style={{ color: strokeColor }}>
         {last > first ? '+' : ''}{(last - first).toFixed(1)}
       </div>
     </div>
