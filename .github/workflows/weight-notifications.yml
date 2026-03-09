@@ -1,11 +1,8 @@
-name: Weight Notification Cron
+name: Weight Notification (Manual Fallback)
 
+# Scheduling is handled by Supabase pg_cron (see migration 008_notification_cron.sql).
+# This workflow is a manual-only fallback for re-triggering missed runs.
 on:
-  schedule:
-    # Daily reminder — 13:00 UTC (≈ 8 AM EST / 5 AM PST)
-    - cron: '0 13 * * *'
-    # Weekly progress — 17:00 UTC every Sunday (≈ 12 PM EST / 9 AM PST)
-    - cron: '0 17 * * 0'
   workflow_dispatch:
     inputs:
       mode:
@@ -21,22 +18,11 @@ jobs:
   send-notifications:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine notification mode
-        id: mode
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "0 17 * * 0" ]; then
-            echo "value=weekly" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=daily" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Invoke weight notification edge function
         run: |
           http_code=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/send-weight-notifications?mode=${{ steps.mode.outputs.value }}" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/send-weight-notifications?mode=${{ inputs.mode }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{}')

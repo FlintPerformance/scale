@@ -1,9 +1,11 @@
 /**
  * Supabase Edge Function: send-weight-notifications
  *
- * Triggered by GitHub Actions cron:
+ * Triggered by pg_cron via pg_net (see migration 008_notification_cron.sql):
  *   - Daily at 13:00 UTC (≈ 8 AM EST) — "daily" reminder to log weight
  *   - Weekly on Sunday at 17:00 UTC (≈ 12 PM EST) — "weekly" progress summary
+ *
+ * GitHub Actions workflow kept as manual-only fallback for missed runs.
  *
  * For daily: checks if user has logged weight today; if not, sends a reminder.
  * For weekly: computes 7-day weight change and sends a summary.
