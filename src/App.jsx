@@ -14,6 +14,7 @@ import Settings from './views/Settings';
 import Circle from './views/Circle';
 import Layout from './components/Layout';
 import Toast from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const AppDataContext = createContext(null);
 const AppActionsContext = createContext(null);
@@ -209,7 +210,9 @@ export default function App() {
       if (!Component) return null;
       return (
         <div key={v} style={{ display: v === view ? 'block' : 'none' }}>
-          <Component />
+          <ErrorBoundary>
+            <Component />
+          </ErrorBoundary>
         </div>
       );
     });
