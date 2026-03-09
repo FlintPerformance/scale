@@ -205,6 +205,14 @@ export default function Circle() {
           .eq('entry_id', entryId).eq('user_id', user.id).eq('emoji', emoji);
       } else {
         await supabase.from('cheers').insert({ entry_id: entryId, user_id: user.id, emoji });
+
+        // Send push notification to the entry owner (fire and forget)
+        const entry = filteredFeed.find(f => f.id === entryId);
+        if (entry && entry.user_id !== user.id) {
+          supabase.functions.invoke('send-reaction-notification', {
+            body: { entry_owner_id: entry.user_id, reactor_name: displayName, emoji },
+          }).catch(() => {}); // Silent fail — notification is best-effort
+        }
       }
       setReactions(prev => {
         const list = [...(prev[entryId] || [])];
