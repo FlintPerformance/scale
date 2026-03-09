@@ -1228,28 +1228,43 @@ function MiniSparkline({ data, color }) {
   const max = Math.max(...weights);
   const range = max - min || 1;
   const h = 32;
-  const w = 100;
-  const step = w / (weights.length - 1);
+  const w = 120;
+  const pad = 3;
+  const step = (w - pad * 2) / (weights.length - 1);
 
-  const points = weights.map((v, i) => {
-    const x = i * step;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return `${x},${y}`;
-  }).join(' ');
+  const pts = weights.map((v, i) => ({
+    x: pad + i * step,
+    y: h - pad - ((v - min) / range) * (h - pad * 2),
+  }));
+
+  // Build smooth cubic bezier path
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const cp = step * 0.4;
+    d += ` C${pts[i].x + cp},${pts[i].y} ${pts[i + 1].x - cp},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+  }
+
+  // Closed path for gradient fill area
+  const fillD = `${d} L${pts[pts.length - 1].x},${h} L${pts[0].x},${h} Z`;
 
   const first = weights[0];
   const last = weights[weights.length - 1];
-  const strokeColor = color || (last < first ? '#34d399' : last > first ? '#f87171' : '#ede8df66');
+  const strokeColor = color || (last < first ? '#34d399' : last > first ? '#f87171' : 'rgba(237,232,223,0.4)');
+  const gradId = `sg-${(data[0]?.date || '').replace(/\D/g, '')}`;
+  const lastPt = pts[pts.length - 1];
 
   return (
     <div className="flex items-center gap-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="flex-1 h-8" preserveAspectRatio="none">
-        <polyline points={points} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {weights.map((v, i) => {
-          const x = i * step;
-          const y = h - ((v - min) / range) * (h - 4) - 2;
-          return <circle key={i} cx={x} cy={y} r="2.5" fill={strokeColor} />;
-        })}
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={fillD} fill={`url(#${gradId})`} />
+        <path d={d} fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={lastPt.x} cy={lastPt.y} r="2" fill={strokeColor} />
       </svg>
       <div className="text-xs font-medium whitespace-nowrap" style={{ color: strokeColor }}>
         {last > first ? '+' : ''}{(last - first).toFixed(1)}
