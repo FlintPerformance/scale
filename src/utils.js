@@ -83,7 +83,8 @@ export function aggregateDaily(entries, mode = 'morning') {
   });
 }
 
-/** Build candlestick data: for each day, compute open (first), close (last), high, low. */
+/** Build candlestick data: for each day, compute open (first), close (last), high, low.
+ *  range is a [low, high] tuple for Recharts ranged Bar rendering. */
 export function buildCandlestickData(entries) {
   const byDate = {};
   for (const e of entries) {
@@ -95,15 +96,18 @@ export function buildCandlestickData(entries) {
     const dayEntries = byDate[date];
     const weights = dayEntries.map(e => e.weight);
     const morning = dayEntries.find(e => e.isMorning);
+    const low = Math.min(...weights);
+    const high = Math.max(...weights);
     return {
       date,
-      low: Math.min(...weights),
-      high: Math.max(...weights),
+      low,
+      high,
       open: weights[0],
       close: weights[weights.length - 1],
       morning: morning ? morning.weight : null,
       count: weights.length,
       unit: dayEntries[0].unit,
+      range: [low, high],
     };
   });
 }

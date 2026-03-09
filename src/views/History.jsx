@@ -5,18 +5,35 @@ import { ResponsiveContainer, LineChart, ComposedChart, Line, Bar, XAxis, YAxis,
 
 function CandlestickShape({ x, y, width, height, payload }) {
   if (!payload) return null;
-  const { low, high, morning } = payload;
-  const yScale = height !== 0 ? (high - low) / Math.abs(height) : 0;
-  const barCenter = x + width / 2;
-  const wickWidth = Math.max(1, width * 0.15);
-  const bodyWidth = Math.max(2, width * 0.6);
+  const { low, high, open, close, morning, count } = payload;
+  const cx = x + width / 2;
+  const absH = Math.abs(height);
+  const top = height >= 0 ? y : y + height;
+
+  if (count === 1 || low === high) {
+    return (
+      <g>
+        <line x1={cx - width * 0.3} y1={top} x2={cx + width * 0.3} y2={top} stroke="#f04a0e" strokeWidth={2} strokeLinecap="round" />
+        <circle cx={cx} cy={top} r={Math.max(3, width * 0.25)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
+      </g>
+    );
+  }
+
+  const pxPerUnit = absH / (high - low);
+  const wickWidth = Math.max(1, width * 0.12);
+  const bodyWidth = Math.max(4, width * 0.55);
+  const openY = top + (high - open) * pxPerUnit;
+  const closeY = top + (high - close) * pxPerUnit;
+  const bodyTop = Math.min(openY, closeY);
+  const bodyH = Math.max(2, Math.abs(closeY - openY));
+  const bullish = close <= open;
 
   return (
     <g>
-      <rect x={barCenter - wickWidth / 2} y={y} width={wickWidth} height={Math.abs(height) || 1} fill="#ede8df33" rx={0.5} />
-      <rect x={barCenter - bodyWidth / 2} y={y} width={bodyWidth} height={Math.abs(height) || 1} fill="#f04a0e" rx={1} opacity={0.7} />
-      {morning != null && yScale !== 0 && (
-        <circle cx={barCenter} cy={y + (high - morning) / yScale} r={Math.max(2, width * 0.25)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1} />
+      <rect x={cx - wickWidth / 2} y={top} width={wickWidth} height={absH} fill="#ede8df20" rx={1} />
+      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#22c55e' : '#f04a0e'} rx={1.5} opacity={0.85} />
+      {morning != null && (
+        <circle cx={cx} cy={top + (high - morning) * pxPerUnit} r={Math.max(3, width * 0.22)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
       )}
     </g>
   );
@@ -113,7 +130,7 @@ export default function History() {
                 {activeGoal && (
                   <ReferenceLine y={activeGoal.targetWeight} stroke="#fbbf24" strokeDasharray="6 3" label={{ value: 'Goal', fill: '#fbbf24', fontSize: 10 }} />
                 )}
-                <Line type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} dot={{ r: 2, fill: '#f04a0e' }} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} dot={{ r: 3, fill: '#f04a0e', stroke: '#ede8df44', strokeWidth: 1 }} activeDot={{ r: 5, fill: '#f04a0e', stroke: '#ede8df', strokeWidth: 2 }} />
                 <Line type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -125,15 +142,19 @@ export default function History() {
                 <Tooltip
                   contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                   labelFormatter={formatDateShort}
-                  formatter={(value, name) => {
-                    if (name === 'range') return null;
-                    return [formatWeight(value, unit), name === 'morning' ? 'Morning' : name.charAt(0).toUpperCase() + name.slice(1)];
+                  formatter={(value, name, { payload }) => {
+                    if (name === 'range') {
+                      const items = [`Low: ${formatWeight(payload.low, unit)}`, `High: ${formatWeight(payload.high, unit)}`];
+                      if (payload.morning != null) items.push(`AM: ${formatWeight(payload.morning, unit)}`);
+                      return [items.join('  ·  '), null];
+                    }
+                    return null;
                   }}
                 />
                 {activeGoal && (
                   <ReferenceLine y={activeGoal.targetWeight} stroke="#fbbf24" strokeDasharray="6 3" label={{ value: 'Goal', fill: '#fbbf24', fontSize: 10 }} />
                 )}
-                <Bar dataKey="high" fill="transparent" isAnimationActive={false} shape={<CandlestickShape />} />
+                <Bar dataKey="range" fill="transparent" isAnimationActive={false} shape={<CandlestickShape />} />
               </ComposedChart>
             </ResponsiveContainer>
           )}

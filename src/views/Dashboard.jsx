@@ -5,22 +5,41 @@ import { ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, XAxis, YAxis,
 
 function CandlestickShape({ x, y, width, height, payload }) {
   if (!payload) return null;
-  const { low, high, morning } = payload;
-  const yScale = height !== 0 ? (high - low) / Math.abs(height) : 0;
-  // For candlestick we use the bar's coordinates to derive positions
-  const barCenter = x + width / 2;
-  const wickWidth = Math.max(1, width * 0.15);
-  const bodyWidth = Math.max(2, width * 0.6);
+  const { low, high, open, close, morning, count } = payload;
+  const cx = x + width / 2;
+  const absH = Math.abs(height);
+  const top = height >= 0 ? y : y + height; // top pixel = high value
+
+  // Single entry day — just show a dot
+  if (count === 1 || low === high) {
+    return (
+      <g>
+        <line x1={cx - width * 0.3} y1={top} x2={cx + width * 0.3} y2={top} stroke="#f04a0e" strokeWidth={2} strokeLinecap="round" />
+        <circle cx={cx} cy={top} r={Math.max(3, width * 0.25)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
+      </g>
+    );
+  }
+
+  const pxPerUnit = absH / (high - low);
+  const wickWidth = Math.max(1, width * 0.12);
+  const bodyWidth = Math.max(4, width * 0.55);
+
+  // Body from open to close
+  const openY = top + (high - open) * pxPerUnit;
+  const closeY = top + (high - close) * pxPerUnit;
+  const bodyTop = Math.min(openY, closeY);
+  const bodyH = Math.max(2, Math.abs(closeY - openY));
+  const bullish = close <= open; // weight went down = good
 
   return (
     <g>
-      {/* Wick - full range line */}
-      <rect x={barCenter - wickWidth / 2} y={y} width={wickWidth} height={Math.abs(height) || 1} fill="#ede8df33" rx={0.5} />
-      {/* Body */}
-      <rect x={barCenter - bodyWidth / 2} y={y} width={bodyWidth} height={Math.abs(height) || 1} fill="#f04a0e" rx={1} opacity={0.7} />
+      {/* Wick — full day range */}
+      <rect x={cx - wickWidth / 2} y={top} width={wickWidth} height={absH} fill="#ede8df20" rx={1} />
+      {/* Body — open to close */}
+      <rect x={cx - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyH} fill={bullish ? '#22c55e' : '#f04a0e'} rx={1.5} opacity={0.85} />
       {/* Morning weight marker */}
-      {morning != null && yScale !== 0 && (
-        <circle cx={barCenter} cy={y + (high - morning) / yScale} r={Math.max(2, width * 0.25)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1} />
+      {morning != null && (
+        <circle cx={cx} cy={top + (high - morning) * pxPerUnit} r={Math.max(3, width * 0.22)} fill="#f04a0e" stroke="#ede8df" strokeWidth={1.5} />
       )}
     </g>
   );
@@ -202,7 +221,29 @@ export default function Dashboard() {
                         labelFormatter={formatDateShort}
                         formatter={(v) => [formatWeight(v, unit)]}
                       />
-                      <Area type="monotone" dataKey="weight" stroke="#f04a0e" strokeWidth={2} fill="url(#weightGrad)" dot={false} />
+                      <Area
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="#f04a0e"
+                        strokeWidth={2}
+                        fill="url(#weightGrad)"
+                        dot={(props) => {
+                          const { cx, cy, index } = props;
+                          const isLast = index === chartData.length - 1;
+                          return (
+                            <circle
+                              key={index}
+                              cx={cx}
+                              cy={cy}
+                              r={isLast ? 5 : 2.5}
+                              fill="#f04a0e"
+                              stroke={isLast ? '#ede8df' : 'none'}
+                              strokeWidth={isLast ? 2 : 0}
+                            />
+                          );
+                        }}
+                        activeDot={{ r: 5, fill: '#f04a0e', stroke: '#ede8df', strokeWidth: 2 }}
+                      />
                       <Area type="monotone" dataKey="average" stroke="#b8ccda" strokeWidth={1.5} strokeDasharray="4 4" fill="none" dot={false} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -237,18 +278,24 @@ export default function Dashboard() {
                       <Tooltip
                         contentStyle={{ background: '#161616', border: '1px solid rgba(237,232,223,0.06)', borderRadius: 2, color: '#ede8df' }}
                         labelFormatter={formatDateShort}
-                        formatter={(value, name) => {
-                          if (name === 'range') return null;
-                          return [formatWeight(value, unit), name === 'morning' ? 'Morning' : name.charAt(0).toUpperCase() + name.slice(1)];
+                        formatter={(value, name, { payload }) => {
+                          if (name === 'range') {
+                            const items = [`Low: ${formatWeight(payload.low, unit)}`, `High: ${formatWeight(payload.high, unit)}`];
+                            if (payload.morning != null) items.push(`AM: ${formatWeight(payload.morning, unit)}`);
+                            return [items.join('  ·  '), null];
+                          }
+                          return null;
                         }}
-                        itemSorter={() => 0}
                       />
-                      <Bar dataKey="high" fill="transparent" isAnimationActive={false} shape={<CandlestickShape />} />
+                      <Bar dataKey="range" fill="transparent" isAnimationActive={false} shape={<CandlestickShape />} />
                     </ComposedChart>
                   </ResponsiveContainer>
                   <div className="flex gap-4 mt-2 justify-center">
                     <span className="flex items-center gap-1 text-[10px] text-cream/40">
-                      <span className="w-3 h-1 bg-accent rounded opacity-70"></span> Day Range
+                      <span className="w-2 h-3 bg-success rounded-sm opacity-85"></span> Down
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-cream/40">
+                      <span className="w-2 h-3 bg-accent rounded-sm opacity-85"></span> Up
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-cream/40">
                       <span className="w-2 h-2 bg-accent rounded-full border border-cream"></span> Morning
