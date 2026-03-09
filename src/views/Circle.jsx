@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
-import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, aggregateDaily } from '../utils';
+import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, daysAgo, localDateStr, aggregateDaily } from '../utils';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import Avatar from '../components/Avatar';
 
@@ -299,7 +299,7 @@ export default function Circle() {
         predicted_weight: parseFloat(predictionWeight),
         start_weight: latestWeight,
         unit,
-        deadline: deadlineDate.toISOString().slice(0, 10),
+        deadline: localDateStr(deadlineDate),
         message: predictionMessage.trim() || null,
       });
       if (error) throw error;
@@ -351,7 +351,7 @@ export default function Circle() {
       const deadlineDate = new Date(pred.deadline + 'T00:00:00');
       const dayBefore = new Date(deadlineDate); dayBefore.setDate(dayBefore.getDate() - 1);
       const dayAfter = new Date(deadlineDate); dayAfter.setDate(dayAfter.getDate() + 1);
-      const range = [dayBefore, deadlineDate, dayAfter].map(d => d.toISOString().slice(0, 10));
+      const range = [dayBefore, deadlineDate, dayAfter].map(d => localDateStr(d));
 
       const { data: weights } = await supabase
         .from('weight_entries')
@@ -472,8 +472,8 @@ export default function Circle() {
       }];
     }
     const today = todayStr();
-    const d7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const d7 = daysAgo(7);
+    const d30 = daysAgo(30);
 
     return unique.map((member, i) => {
       const allWeights = filteredFeed.filter(f => f.user_id === member.user_id);
@@ -500,7 +500,7 @@ export default function Circle() {
   const compareData = useMemo(() => {
     if (tab !== 'compare') return [];
     const days = parseInt(compareRange);
-    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const cutoff = daysAgo(days);
     const dateSet = new Set();
     const byUserDate = {};
 

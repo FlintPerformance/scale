@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { formatDate, formatWeight, getMovingAverage, formatDateShort, aggregateDaily, buildCandlestickData } from '../utils';
+import { formatDate, formatWeight, getMovingAverage, formatDateShort, aggregateDaily, buildCandlestickData, daysAgo } from '../utils';
 import { ResponsiveContainer, LineChart, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
 
 function CandlestickShape({ x, y, width, height, payload }) {
@@ -51,7 +51,7 @@ export default function History() {
   const filtered = useMemo(() => {
     if (range === 'all') return weights;
     const days = parseInt(range);
-    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const cutoff = daysAgo(days);
     return weights.filter(w => w.date >= cutoff);
   }, [weights, range]);
 

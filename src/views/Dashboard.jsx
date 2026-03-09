@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { formatWeight, getWeightChange, getMovingAverage, getStreak, formatDateShort, aggregateDaily } from '../utils';
+import { formatWeight, getWeightChange, getMovingAverage, getStreak, formatDateShort, aggregateDaily, daysAgo } from '../utils';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function Dashboard() {
@@ -10,11 +10,11 @@ export default function Dashboard() {
   const latest = weights[0];
   const activeGoal = goals.find(g => g.active);
   const streak = getStreak(weights);
-  const last30 = weights.filter(w => w.date >= new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  const last30 = weights.filter(w => w.date >= daysAgo(30));
   const change = getWeightChange(last30);
 
   const chartData = useMemo(() => {
-    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const cutoff = daysAgo(7);
     const recent = weights.filter(w => w.date >= cutoff);
     const daily = aggregateDaily(recent, 'morning');
     return getMovingAverage(daily);
