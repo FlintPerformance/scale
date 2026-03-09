@@ -52,15 +52,20 @@ export default function Circle() {
 
       const memberIds = [...new Set((allMembers || []).map(m => m.user_id))];
 
-      // Fetch profiles separately (no direct FK from circle_members to profiles)
+      // Fetch profiles and weight entries in parallel (both only need memberIds)
       let profileRows = [];
+      let sharedWeights = [];
       if (memberIds.length > 0) {
-        const { data: pData } = await supabase
-          .from('profiles')
-          .select('id, display_name, avatar_url')
-          .in('id', memberIds);
-        profileRows = pData || [];
+        const [profileRes, weightsRes] = await Promise.all([
+          supabase.from('profiles').select('id, display_name, avatar_url').in('id', memberIds),
+          supabase.from('weight_entries').select('*').in('user_id', memberIds).order('date', { ascending: false }).limit(200),
+        ]);
+        if (profileRes.error) console.error('Profiles query error:', profileRes.error);
+        if (weightsRes.error) console.error('Weight entries query error:', weightsRes.error);
+        profileRows = profileRes.data || [];
+        sharedWeights = weightsRes.data || [];
       }
+
       const profileById = {};
       profileRows.forEach(p => { profileById[p.id] = p; });
 
@@ -70,19 +75,6 @@ export default function Circle() {
       }));
 
       setMembers(membersWithProfiles);
-
-      // Fetch more entries for richer member stats
-      let sharedWeights = [];
-      if (memberIds.length > 0) {
-        const { data: wData, error: wErr } = await supabase
-          .from('weight_entries')
-          .select('*')
-          .in('user_id', memberIds)
-          .order('date', { ascending: false })
-          .limit(200);
-        if (wErr) console.error('Weight entries query error:', wErr);
-        sharedWeights = wData || [];
-      }
 
       // Load reactions
       const entryIds = sharedWeights.map(w => w.id);
