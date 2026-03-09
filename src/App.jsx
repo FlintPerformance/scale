@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useLocalData } from './hooks/useLocalData';
 import { useNavigation } from './hooks/useNavigation';
@@ -11,10 +11,9 @@ import LogWeight from './views/LogWeight';
 import History from './views/History';
 import Goals from './views/Goals';
 import Settings from './views/Settings';
+import Circle from './views/Circle';
 import Layout from './components/Layout';
 import Toast from './components/Toast';
-
-const Circle = lazy(() => import('./views/Circle'));
 
 const AppDataContext = createContext(null);
 const AppActionsContext = createContext(null);
@@ -192,16 +191,28 @@ export default function App() {
     );
   }
 
-  const renderView = () => {
-    switch (view) {
-      case 'dashboard': return <Dashboard />;
-      case 'log': return <LogWeight />;
-      case 'history': return <History />;
-      case 'goals': return <Goals />;
-      case 'circle': return <Suspense fallback={<div className="text-center py-12 text-cream/40 animate-pulse-accent">Loading...</div>}><Circle /></Suspense>;
-      case 'settings': return <Settings />;
-      default: return <Dashboard />;
-    }
+  const visitedViews = useRef(new Set(['dashboard']));
+  if (view) visitedViews.current.add(view);
+
+  const VIEW_COMPONENTS = {
+    dashboard: Dashboard,
+    log: LogWeight,
+    history: History,
+    goals: Goals,
+    circle: Circle,
+    settings: Settings,
+  };
+
+  const renderViews = () => {
+    return Array.from(visitedViews.current).map(v => {
+      const Component = VIEW_COMPONENTS[v];
+      if (!Component) return null;
+      return (
+        <div key={v} style={{ display: v === view ? 'block' : 'none' }}>
+          <Component />
+        </div>
+      );
+    });
   };
 
   if (showOnboarding) {
@@ -225,7 +236,7 @@ export default function App() {
             </div>
           ) : (
             <div className="animate-fade-in">
-              {renderView()}
+              {renderViews()}
             </div>
           )}
         </Layout>
