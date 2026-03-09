@@ -5,6 +5,7 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
   { id: 'log', label: 'Log', Icon: PlusIcon },
   { id: 'history', label: 'History', Icon: ChartIcon },
+  { id: 'goals', label: 'Goals', Icon: TargetIcon },
   { id: 'circle', label: 'Circle', Icon: UsersIcon },
 ];
 
@@ -76,15 +77,15 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] nav-extend-bottom">
-        <div className="flex" style={{ height: '30px' }}>
+      <nav className="desktop:hidden shrink-0 bg-surface-mid border-t border-white/[0.06] nav-extend-bottom" aria-label="Primary">
+        <div className="flex" style={{ height: '50px' }}>
           {NAV.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => navigate(id)}
-              aria-label={id}
+              aria-label={label}
               aria-current={view === id ? 'page' : undefined}
-              className={`relative flex-1 flex flex-col items-center justify-center pt-0.5 leading-none transition-colors ${
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 leading-none transition-colors min-h-[44px] ${
                 view === id ? 'text-accent' : 'text-muted'
               }`}
             >
@@ -126,6 +127,16 @@ function ChartIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function TargetIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
     </svg>
   );
 }

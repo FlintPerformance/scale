@@ -122,6 +122,24 @@ export default function Settings() {
     }
   };
 
+  const validateImportData = (data) => {
+    if (!data || typeof data !== 'object') return false;
+    if (data.weights && !Array.isArray(data.weights)) return false;
+    if (data.goals && !Array.isArray(data.goals)) return false;
+    // Validate weight entries have required fields
+    if (data.weights) {
+      for (const w of data.weights) {
+        if (!w.id || !w.date || typeof w.weight !== 'number') return false;
+      }
+    }
+    if (data.goals) {
+      for (const g of data.goals) {
+        if (!g.id || typeof g.targetWeight !== 'number') return false;
+      }
+    }
+    return true;
+  };
+
   const handleImport = async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -130,13 +148,21 @@ export default function Settings() {
       try {
         const file = e.target.files[0];
         if (!file) return;
+        if (file.size > 10 * 1024 * 1024) {
+          showToast('File too large (max 10MB)', 'error');
+          return;
+        }
         const text = await file.text();
         const data = JSON.parse(text);
+        if (!validateImportData(data)) {
+          showToast('Invalid backup file format', 'error');
+          return;
+        }
         await importAllDB(data);
         await reload();
-        showToast('Data imported');
+        showToast(`Imported ${(data.weights || []).length} entries, ${(data.goals || []).length} goals`);
       } catch {
-        showToast('Import failed', 'error');
+        showToast('Import failed — check file format', 'error');
       }
     };
     input.click();

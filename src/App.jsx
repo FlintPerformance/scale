@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useLocalData } from './hooks/useLocalData';
 import { useNavigation } from './hooks/useNavigation';
@@ -10,10 +10,11 @@ import Dashboard from './views/Dashboard';
 import LogWeight from './views/LogWeight';
 import History from './views/History';
 import Goals from './views/Goals';
-import Circle from './views/Circle';
 import Settings from './views/Settings';
 import Layout from './components/Layout';
 import Toast from './components/Toast';
+
+const Circle = lazy(() => import('./views/Circle'));
 
 const AppDataContext = createContext(null);
 const AppActionsContext = createContext(null);
@@ -22,6 +23,31 @@ export function useAppData() { return useContext(AppDataContext); }
 export function useAppActions() { return useContext(AppActionsContext); }
 export function useApp() {
   return { ...useAppData(), ...useAppActions() };
+}
+
+function OfflineBanner() {
+  const [offline, setOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
+
+  if (!offline) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[90] desktop:left-56">
+      <div className="bg-warning/90 text-surface px-4 py-1.5 text-center text-xs font-medium">
+        You're offline — changes will sync when you reconnect
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -46,7 +72,7 @@ export default function App() {
   const [syncedOnce, setSyncedOnce] = useState(false);
 
   // Auto-sync from cloud when user signs in
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user || !data.loaded) return;
     let cancelled = false;
     (async () => {
@@ -75,10 +101,10 @@ export default function App() {
   }, [user, data.loaded, syncedOnce, data.weights.length]);
 
   // Run check when data loads
-  React.useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
+  useEffect(() => { checkOnboarding(); }, [checkOnboarding]);
 
   // Auto-navigate to circle if invite code in URL
-  React.useEffect(() => {
+  useEffect(() => {
     if (pendingInvite && user) navigate('circle');
   }, [pendingInvite, user, navigate]);
 
@@ -87,9 +113,12 @@ export default function App() {
     setShowOnboarding(false);
   }, []);
 
+  const toastTimerRef = React.useRef(null);
+
   const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type, key: Date.now() });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
   const handleSync = useCallback(async () => {
@@ -158,7 +187,7 @@ export default function App() {
     return (
       <AppActionsContext.Provider value={actionsValue}>
         <AuthView />
-        {toast && <Toast message={toast.message} type={toast.type} />}
+        {toast && <Toast key={toast.key} message={toast.message} type={toast.type} />}
       </AppActionsContext.Provider>
     );
   }
@@ -169,7 +198,7 @@ export default function App() {
       case 'log': return <LogWeight />;
       case 'history': return <History />;
       case 'goals': return <Goals />;
-      case 'circle': return <Circle />;
+      case 'circle': return <Suspense fallback={<div className="text-center py-12 text-cream/40 animate-pulse-accent">Loading...</div>}><Circle /></Suspense>;
       case 'settings': return <Settings />;
       default: return <Dashboard />;
     }
@@ -180,7 +209,7 @@ export default function App() {
       <AppDataContext.Provider value={dataValue}>
         <AppActionsContext.Provider value={actionsValue}>
           <Onboarding onComplete={completeOnboarding} />
-          {toast && <Toast message={toast.message} type={toast.type} />}
+          {toast && <Toast key={toast.key} message={toast.message} type={toast.type} />}
         </AppActionsContext.Provider>
       </AppDataContext.Provider>
     );
@@ -200,7 +229,8 @@ export default function App() {
             </div>
           )}
         </Layout>
-        {toast && <Toast message={toast.message} type={toast.type} />}
+        <OfflineBanner />
+        {toast && <Toast key={toast.key} message={toast.message} type={toast.type} />}
       </AppActionsContext.Provider>
     </AppDataContext.Provider>
   );

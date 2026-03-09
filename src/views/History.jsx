@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { formatDate, formatWeight, getMovingAverage, formatDateShort, aggregateDaily, buildCandlestickData, daysAgo } from '../utils';
+import { formatDate, formatWeight, getMovingAverage, getWeightChange, formatDateShort, aggregateDaily, buildCandlestickData, daysAgo } from '../utils';
 import { ResponsiveContainer, LineChart, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
+
+const PAGE_SIZE = 50;
 
 function CandlestickShape({ x, y, width, height, payload }) {
   if (!payload) return null;
@@ -41,10 +43,14 @@ function CandlestickShape({ x, y, width, height, payload }) {
 
 export default function History() {
   const { weights, goals, unit } = useAppData();
-  const { removeWeight, navigate } = useAppActions();
+  const { removeWeight, updateWeight, navigate, showToast } = useAppActions();
   const [range, setRange] = useState('30');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [chartMode, setChartMode] = useState('line');
+  const [editingId, setEditingId] = useState(null);
+  const [editWeight, setEditWeight] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [page, setPage] = useState(1);
 
   const activeGoal = goals.find(g => g.active);
 
@@ -54,6 +60,18 @@ export default function History() {
     const cutoff = daysAgo(days);
     return weights.filter(w => w.date >= cutoff);
   }, [weights, range]);
+
+  // Reset page when range changes
+  const handleRangeChange = (val) => {
+    setRange(val);
+    setPage(1);
+  };
+
+  const pagedEntries = useMemo(() => {
+    return filtered.slice(0, page * PAGE_SIZE);
+  }, [filtered, page]);
+
+  const hasMore = pagedEntries.length < filtered.length;
 
   const chartData = useMemo(() => {
     const daily = aggregateDaily([...filtered], 'morning');
@@ -74,9 +92,38 @@ export default function History() {
     return [min, max];
   }, [candlestickData]);
 
+  // Stats for the filtered range
+  const stats = useMemo(() => {
+    if (filtered.length === 0) return null;
+    const sorted = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
+    const allWeights = sorted.map(e => e.weight);
+    const avg = allWeights.reduce((s, w) => s + w, 0) / allWeights.length;
+    const highest = sorted.reduce((max, e) => e.weight > max.weight ? e : max, sorted[0]);
+    const lowest = sorted.reduce((min, e) => e.weight < min.weight ? e : min, sorted[0]);
+    const change = getWeightChange(sorted);
+    return { count: filtered.length, avg, highest, lowest, change };
+  }, [filtered]);
+
   const handleDelete = async (id) => {
     await removeWeight(id);
     setConfirmDelete(null);
+  };
+
+  const startEdit = (entry) => {
+    setEditingId(entry.id);
+    setEditWeight(String(entry.weight));
+    setEditNotes(entry.notes || '');
+  };
+
+  const saveEdit = async (id) => {
+    const num = Number(editWeight);
+    if (isNaN(num) || num <= 0) {
+      showToast('Invalid weight', 'error');
+      return;
+    }
+    await updateWeight(id, { weight: num, notes: editNotes });
+    setEditingId(null);
+    showToast('Entry updated');
   };
 
   return (
@@ -87,7 +134,7 @@ export default function History() {
           {[['7', '7d'], ['30', '30d'], ['90', '90d'], ['all', 'All']].map(([val, label]) => (
             <button
               key={val}
-              onClick={() => setRange(val)}
+              onClick={() => handleRangeChange(val)}
               className={`px-2.5 py-1 rounded-sm text-xs font-medium transition-colors ${
                 range === val ? 'bg-accent text-white' : 'text-cream/50 hover:text-cream'
               }`}
@@ -161,6 +208,35 @@ export default function History() {
         </div>
       )}
 
+      {/* Stats Panel */}
+      {stats && (
+        <div className="grid grid-cols-2 desktop:grid-cols-4 gap-2 mb-4">
+          <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
+            <p className="text-cream/40 text-[9px] uppercase tracking-wider">Entries</p>
+            <p className="font-display text-lg text-cream">{stats.count}</p>
+          </div>
+          <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
+            <p className="text-cream/40 text-[9px] uppercase tracking-wider">Average</p>
+            <p className="font-display text-lg text-cream">{formatWeight(stats.avg, unit)}</p>
+          </div>
+          <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
+            <p className="text-cream/40 text-[9px] uppercase tracking-wider">Lowest</p>
+            <p className="font-display text-lg text-success">{formatWeight(stats.lowest.weight, unit)}</p>
+            <p className="text-cream/30 text-[9px]">{formatDateShort(stats.lowest.date)}</p>
+          </div>
+          <div className="bg-surface-mid rounded-sm p-3 border border-white/5 text-center">
+            <p className="text-cream/40 text-[9px] uppercase tracking-wider">Change</p>
+            {stats.change ? (
+              <p className={`font-display text-lg ${stats.change.change < 0 ? 'text-success' : stats.change.change > 0 ? 'text-danger' : 'text-cream/50'}`}>
+                {stats.change.change > 0 ? '+' : ''}{stats.change.change.toFixed(1)} {unit}
+              </p>
+            ) : (
+              <p className="text-cream/30 text-xs">--</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Entry List */}
       <div className="space-y-2">
         {filtered.length === 0 && (
@@ -169,33 +245,81 @@ export default function History() {
             <button onClick={() => navigate('log')} className="text-accent text-sm mt-2 hover:underline">Log your first weight</button>
           </div>
         )}
-        {filtered.map(entry => (
-          <div key={entry.id} className="bg-surface-mid rounded-sm p-3 border border-white/5 flex items-center justify-between group">
-            <div className="flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-cream font-semibold">{formatWeight(entry.weight, unit)}</span>
-                {entry.isMorning && (
-                  <span className="text-accent text-[10px] uppercase tracking-wider font-medium">AM</span>
-                )}
-                <span className="text-cream/40 text-xs">{formatDate(entry.date)}</span>
-              </div>
-              {entry.notes && <p className="text-cream/40 text-xs mt-0.5">{entry.notes}</p>}
-            </div>
-            {confirmDelete === entry.id ? (
-              <div className="flex gap-2">
-                <button onClick={() => handleDelete(entry.id)} className="text-danger text-xs font-medium">Delete</button>
-                <button onClick={() => setConfirmDelete(null)} className="text-cream/40 text-xs">Cancel</button>
+        {pagedEntries.map(entry => (
+          <div key={entry.id} className="bg-surface-mid rounded-sm p-3 border border-white/5 group">
+            {editingId === entry.id ? (
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editWeight}
+                    onChange={e => setEditWeight(e.target.value)}
+                    className="flex-1 text-sm py-1.5"
+                    autoFocus
+                  />
+                  <span className="text-cream/40 text-xs">{unit}</span>
+                </div>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  maxLength={200}
+                  className="w-full text-sm py-1.5"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(entry.id)} className="text-accent text-xs font-medium">Save</button>
+                  <button onClick={() => setEditingId(null)} className="text-cream/40 text-xs">Cancel</button>
+                </div>
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmDelete(entry.id)}
-                className="text-cream/20 hover:text-danger text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                Remove
-              </button>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 cursor-pointer" onClick={() => startEdit(entry)}>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-cream font-semibold">{formatWeight(entry.weight, unit)}</span>
+                    {entry.isMorning && (
+                      <span className="text-accent text-[10px] uppercase tracking-wider font-medium">AM</span>
+                    )}
+                    <span className="text-cream/40 text-xs">{formatDate(entry.date)}</span>
+                  </div>
+                  {entry.notes && <p className="text-cream/40 text-xs mt-0.5">{entry.notes}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => startEdit(entry)}
+                    className="text-cream/20 hover:text-accent text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Edit
+                  </button>
+                  {confirmDelete === entry.id ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => handleDelete(entry.id)} className="text-danger text-xs font-medium">Delete</button>
+                      <button onClick={() => setConfirmDelete(null)} className="text-cream/40 text-xs">Cancel</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(entry.id)}
+                      className="text-cream/20 hover:text-danger text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         ))}
+
+        {/* Load More */}
+        {hasMore && (
+          <button
+            onClick={() => setPage(p => p + 1)}
+            className="w-full py-3 text-center text-accent text-sm font-medium hover:bg-surface-mid rounded-sm transition-colors"
+          >
+            Load more ({filtered.length - pagedEntries.length} remaining)
+          </button>
+        )}
       </div>
     </div>
   );

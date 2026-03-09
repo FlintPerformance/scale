@@ -45,7 +45,8 @@ export function getWeightChange(entries) {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const first = sorted[0].weight;
   const last = sorted[sorted.length - 1].weight;
-  return { change: last - first, percent: ((last - first) / first) * 100 };
+  const change = Number((last - first).toFixed(2));
+  return { change, percent: Number(((change / first) * 100).toFixed(2)) };
 }
 
 export function getMovingAverage(entries, window = 7) {
@@ -61,15 +62,41 @@ export function getMovingAverage(entries, window = 7) {
 export function getStreak(entries) {
   if (!entries.length) return 0;
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+  // Deduplicate by date
+  const uniqueDates = [];
+  for (const e of sorted) {
+    if (!uniqueDates.length || uniqueDates[uniqueDates.length - 1] !== e.date) {
+      uniqueDates.push(e.date);
+    }
+  }
+  if (!uniqueDates.length) return 0;
+  // Check if most recent entry is today or yesterday (to not break streak mid-day)
+  const today = todayStr();
+  const yesterday = daysAgo(1);
+  if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
   let streak = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = new Date(sorted[i - 1].date + 'T00:00:00');
-    const curr = new Date(sorted[i].date + 'T00:00:00');
-    const diff = (prev - curr) / (1000 * 60 * 60 * 24);
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const prev = new Date(uniqueDates[i - 1] + 'T00:00:00');
+    const curr = new Date(uniqueDates[i] + 'T00:00:00');
+    const diff = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
     if (diff === 1) streak++;
     else break;
   }
   return streak;
+}
+
+/** Validate weight value is reasonable (1-1500 lbs or 0.5-680 kg) */
+export function isValidWeight(value, unit = 'lb') {
+  const num = Number(value);
+  if (isNaN(num) || !isFinite(num)) return false;
+  if (unit === 'kg') return num >= 0.5 && num <= 680;
+  return num >= 1 && num <= 1500;
+}
+
+/** Sanitize text input - strip HTML tags and trim */
+export function sanitizeText(text) {
+  if (!text) return '';
+  return text.replace(/<[^>]*>/g, '').trim();
 }
 
 /** Aggregate entries to one point per day. Uses morning weight if available, otherwise averages all weights for the day. */

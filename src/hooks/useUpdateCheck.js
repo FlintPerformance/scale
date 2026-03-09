@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 
 const CURRENT_BUILD = typeof __APP_BUILD__ !== 'undefined' ? __APP_BUILD__ : 'dev';
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+// Jitter ±60s to avoid thundering herd
+const JITTER = () => Math.floor(Math.random() * 120_000 - 60_000);
 
 function applyUpdate(waitingWorker) {
   if (waitingWorker) {
@@ -27,8 +29,8 @@ export function useUpdateCheck() {
       } catch {}
     };
 
-    const initialTimeout = setTimeout(checkVersion, 10_000);
-    const interval = setInterval(checkVersion, CHECK_INTERVAL);
+    const initialTimeout = setTimeout(checkVersion, 10_000 + Math.random() * 5000);
+    const interval = setInterval(checkVersion, CHECK_INTERVAL + JITTER());
 
     return () => {
       clearTimeout(initialTimeout);

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { formatWeight } from '../utils';
+import { formatWeight, isValidWeight } from '../utils';
 
 export default function Goals() {
   const { goals, weights, unit } = useAppData();
@@ -8,6 +8,7 @@ export default function Goals() {
   const [targetWeight, setTargetWeight] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
 
   const activeGoal = goals.find(g => g.active);
   const latest = weights[0];
@@ -35,11 +36,25 @@ export default function Goals() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!targetWeight) { showToast('Enter a target weight', 'error'); return; }
+    if (!isValidWeight(targetWeight, unit)) {
+      showToast(`Target must be between ${unit === 'kg' ? '0.5–680' : '1–1500'} ${unit}`, 'error');
+      return;
+    }
+    if (activeGoal) {
+      showToast('New goal set! Previous goal moved to history.');
+    } else {
+      showToast('Goal set!');
+    }
     await addGoal(targetWeight, unit, targetDate || null);
-    showToast('Goal set!');
     setShowForm(false);
     setTargetWeight('');
     setTargetDate('');
+  };
+
+  const handleRemove = async (id) => {
+    await removeGoal(id);
+    setConfirmRemoveId(null);
+    showToast('Goal removed');
   };
 
   return (
@@ -50,7 +65,14 @@ export default function Goals() {
         <div className="bg-surface-mid rounded-sm p-5 border border-white/5 mb-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-cream/50 text-xs uppercase tracking-wider">Active Goal</p>
-            <button onClick={() => removeGoal(activeGoal.id)} className="text-cream/30 hover:text-danger text-xs">Remove</button>
+            {confirmRemoveId === activeGoal.id ? (
+              <div className="flex gap-2">
+                <button onClick={() => handleRemove(activeGoal.id)} className="text-danger text-xs font-medium">Confirm</button>
+                <button onClick={() => setConfirmRemoveId(null)} className="text-cream/40 text-xs">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmRemoveId(activeGoal.id)} className="text-cream/30 hover:text-danger text-xs">Remove</button>
+            )}
           </div>
 
           {/* Progress Ring */}
@@ -123,6 +145,11 @@ export default function Goals() {
       {(showForm || (!activeGoal)) && showForm && (
         <form onSubmit={handleCreate} className="bg-surface-mid rounded-sm p-5 border border-white/5 space-y-4">
           <h2 className="font-heading text-lg font-semibold text-cream">New Goal</h2>
+          {activeGoal && (
+            <p className="text-warning/80 text-xs bg-warning/10 border border-warning/20 rounded-sm px-3 py-2">
+              Setting a new goal will move your current goal to history.
+            </p>
+          )}
           <div>
             <label className="block text-cream/60 text-xs font-medium mb-1 uppercase tracking-wider">Target Weight ({unit})</label>
             <input
@@ -166,7 +193,14 @@ export default function Goals() {
                   <p className="text-cream/60 text-sm">Target: {formatWeight(g.targetWeight, unit)}</p>
                   <p className="text-cream/30 text-xs">From {formatWeight(g.startWeight, unit)}</p>
                 </div>
-                <button onClick={() => removeGoal(g.id)} className="text-cream/20 hover:text-danger text-xs">Remove</button>
+                {confirmRemoveId === g.id ? (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleRemove(g.id)} className="text-danger text-xs font-medium">Confirm</button>
+                    <button onClick={() => setConfirmRemoveId(null)} className="text-cream/40 text-xs">Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmRemoveId(g.id)} className="text-cream/20 hover:text-danger text-xs">Remove</button>
+                )}
               </div>
             ))}
           </div>

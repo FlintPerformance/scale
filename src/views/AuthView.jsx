@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppActions } from '../App';
+import { supabase } from '../supabase';
 
 const FEATURES = [
   { icon: ScaleIcon, text: 'Log daily weigh-ins in seconds' },
@@ -16,12 +17,20 @@ export default function AuthView() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === 'login') {
+      if (mode === 'reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        setResetSent(true);
+        showToast('Password reset email sent!', 'success');
+      } else if (mode === 'login') {
         await signIn(email, password);
       } else {
         await signUp(email, password, displayName || email.split('@')[0]);
@@ -34,6 +43,8 @@ export default function AuthView() {
     }
   };
 
+  const heading = mode === 'signup' ? 'Create Your Account' : mode === 'login' ? 'Welcome Back' : 'Reset Password';
+
   return (
     <div className="h-[100dvh] bg-surface flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
@@ -44,68 +55,112 @@ export default function AuthView() {
         </div>
 
         {/* Feature list - compact */}
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-5">
-          {FEATURES.map((f, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <f.icon />
-              <span className="text-cream/40 text-xs font-body">{f.text}</span>
-            </div>
-          ))}
-        </div>
+        {mode !== 'reset' && (
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-5">
+            {FEATURES.map((f, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <f.icon />
+                <span className="text-cream/40 text-xs font-body">{f.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Form heading */}
         <h2 className="font-heading font-bold text-sm text-cream text-center uppercase tracking-wider mb-3">
-          {mode === 'signup' ? 'Create Your Account' : 'Welcome Back'}
+          {heading}
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-2.5">
-          {mode === 'signup' && (
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              placeholder="Display name"
-              className="w-full"
-            />
-          )}
+        {mode === 'reset' && resetSent ? (
+          <div className="text-center">
+            <div className="bg-success/10 border border-success/20 rounded-sm p-4 mb-4">
+              <p className="text-success text-sm font-medium mb-1">Email sent!</p>
+              <p className="text-cream/50 text-xs">Check your inbox for a password reset link. It may take a minute to arrive.</p>
+            </div>
+            <button
+              onClick={() => { setMode('login'); setResetSent(false); }}
+              className="text-accent text-sm hover:underline"
+            >
+              Back to sign in
+            </button>
+          </div>
+        ) : (
+          <>
+            <form onSubmit={handleSubmit} className="space-y-2.5">
+              {mode === 'signup' && (
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  placeholder="Display name"
+                  className="w-full"
+                  autoComplete="name"
+                />
+              )}
 
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-            className="w-full"
-          />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+                className="w-full"
+                autoComplete="email"
+              />
 
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Password (min. 6 characters)"
-            required
-            minLength={6}
-            className="w-full"
-          />
+              {mode !== 'reset' && (
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Password (min. 6 characters)"
+                  required
+                  minLength={6}
+                  className="w-full"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                />
+              )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3 rounded-sm transition-colors disabled:opacity-50 text-sm"
-          >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
-          </button>
-        </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-accent hover:bg-accent-dark text-white font-heading font-bold uppercase tracking-wider py-3 rounded-sm transition-colors disabled:opacity-50 text-sm"
+              >
+                {loading ? 'Please wait...' : mode === 'reset' ? 'Send Reset Link' : mode === 'login' ? 'Sign In' : 'Sign Up'}
+              </button>
+            </form>
 
-        <p className="text-center mt-4 text-cream/40 text-sm">
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-            className="text-accent hover:underline"
-          >
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
+            {mode === 'reset' ? (
+              <p className="text-center mt-4 text-cream/40 text-sm">
+                <button onClick={() => setMode('login')} className="text-accent hover:underline">
+                  Back to sign in
+                </button>
+              </p>
+            ) : (
+              <div className="text-center mt-4 space-y-2">
+                <p className="text-cream/40 text-sm">
+                  {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                  <button
+                    onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                    className="text-accent hover:underline"
+                  >
+                    {mode === 'login' ? 'Sign up' : 'Sign in'}
+                  </button>
+                </p>
+                {mode === 'login' && (
+                  <p>
+                    <button
+                      onClick={() => setMode('reset')}
+                      className="text-cream/30 text-xs hover:text-cream/50 transition-colors"
+                    >
+                      Forgot your password?
+                    </button>
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

@@ -42,7 +42,9 @@ export function useLocalData(userId) {
   const updateWeight = useCallback(async (id, updates) => {
     const existing = await db.getWeight(id);
     if (!existing) return;
-    await db.saveWeight({ ...existing, ...updates, updatedAt: Date.now() });
+    const updated = { ...existing, ...updates, updatedAt: Date.now() };
+    await db.saveWeight(updated);
+    pushWeightToCloud(updated).catch(err => console.error('Failed to push weight update to cloud:', err));
     await reload();
   }, [reload]);
 

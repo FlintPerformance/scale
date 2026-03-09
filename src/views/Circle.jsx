@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
-import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, daysAgo, localDateStr, aggregateDaily } from '../utils';
+import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, daysAgo, localDateStr, aggregateDaily, sanitizeText } from '../utils';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import Avatar from '../components/Avatar';
 
@@ -38,6 +38,8 @@ export default function Circle() {
   const [predictionWeight, setPredictionWeight] = useState('');
   const [predictionDeadline, setPredictionDeadline] = useState('30');
   const [predictionMessage, setPredictionMessage] = useState('');
+  const [feedPage, setFeedPage] = useState(1);
+  const FEED_PAGE_SIZE = 30;
 
   const loadCircleData = useCallback(async () => {
     setLoading(true);
@@ -189,7 +191,7 @@ export default function Circle() {
     try {
       const inviteCode = generateId().toUpperCase().slice(0, 6);
       const { data: circle, error } = await supabase
-        .from('circles').insert({ name: circleName.trim(), created_by: user.id, invite_code: inviteCode })
+        .from('circles').insert({ name: sanitizeText(circleName), created_by: user.id, invite_code: inviteCode })
         .select().single();
       if (error) throw error;
       const { error: memberErr } = await supabase.from('circle_members').insert({
@@ -300,7 +302,7 @@ export default function Circle() {
         start_weight: latestWeight,
         unit,
         deadline: localDateStr(deadlineDate),
-        message: predictionMessage.trim() || null,
+        message: sanitizeText(predictionMessage) || null,
       });
       if (error) throw error;
       showToast('Prediction locked in!');
@@ -377,10 +379,13 @@ export default function Circle() {
 
   useEffect(() => { if (predictions.length) checkAndResolvePredictions(); }, [predictions.length]);
 
+  const [confirmLeaveId, setConfirmLeaveId] = useState(null);
+
   const leaveCircle = async (circleId) => {
     try {
       await supabase.from('circle_members').delete().eq('circle_id', circleId).eq('user_id', user.id);
       showToast('Left circle');
+      setConfirmLeaveId(null);
       await loadCircleData();
     } catch (err) { showToast(err.message, 'error'); }
   };
@@ -577,7 +582,14 @@ export default function Circle() {
                   >
                     Copy link
                   </button>
-                  <button onClick={() => leaveCircle(circle.id)} className="text-cream/20 hover:text-danger text-[10px]">Leave</button>
+                  {confirmLeaveId === circle.id ? (
+                    <span className="flex gap-1.5">
+                      <button onClick={() => leaveCircle(circle.id)} className="text-danger text-[10px] font-medium">Confirm</button>
+                      <button onClick={() => setConfirmLeaveId(null)} className="text-cream/30 text-[10px]">Cancel</button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmLeaveId(circle.id)} className="text-cream/20 hover:text-danger text-[10px]">Leave</button>
+                  )}
                 </div>
               </div>
             );
@@ -660,7 +672,7 @@ export default function Circle() {
               {feedWithBadges.length === 0 ? (
                 <p className="text-cream/40 text-center py-8 text-sm desktop:col-span-2">No entries shared yet. Log your weight and it will appear here!</p>
               ) : (
-                feedWithBadges.map(entry => {
+                feedWithBadges.slice(0, feedPage * FEED_PAGE_SIZE).map(entry => {
                   const entryReactions = reactions[entry.id] || [];
                   const groupedReactions = {};
                   entryReactions.forEach(r => {
@@ -745,6 +757,14 @@ export default function Circle() {
                   );
                 })
               )}
+              {feedWithBadges.length > feedPage * FEED_PAGE_SIZE && (
+                <button
+                  onClick={() => setFeedPage(p => p + 1)}
+                  className="w-full py-3 text-center text-accent text-sm font-medium hover:bg-surface-mid rounded-sm transition-colors desktop:col-span-2"
+                >
+                  Load more ({feedWithBadges.length - feedPage * FEED_PAGE_SIZE} more)
+                </button>
+              )}
             </div>
           )}
 
@@ -810,7 +830,7 @@ export default function Circle() {
                         onChange={e => setPredictionMessage(e.target.value)}
                         placeholder="Cutting season starts now..."
                         className="w-full"
-                        maxLength={100}
+                        maxLength={300}
                       />
                     </div>
                     <div className="flex gap-2 pt-1">

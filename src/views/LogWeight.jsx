@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
-import { todayStr } from '../utils';
+import { todayStr, isValidWeight, sanitizeText } from '../utils';
 
 export default function LogWeight() {
   const { unit, weights } = useAppData();
@@ -23,13 +23,17 @@ export default function LogWeight() {
       showToast('Enter a valid weight', 'error');
       return;
     }
+    if (!isValidWeight(weight, unit)) {
+      showToast(`Weight must be between ${unit === 'kg' ? '0.5–680' : '1–1500'} ${unit}`, 'error');
+      return;
+    }
     if (isMorning && hasMorningForDate) {
       showToast('Morning weight already logged for this date', 'error');
       return;
     }
     setSaving(true);
     try {
-      await addWeight(weight, unit, date, notes, isMorning);
+      await addWeight(weight, unit, date, sanitizeText(notes), isMorning);
       showToast('Weight logged!');
       navigate('dashboard');
     } catch {
@@ -128,6 +132,7 @@ export default function LogWeight() {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Optional"
+              maxLength={200}
               className="w-full bg-transparent border-none text-cream text-sm p-0 focus:ring-0 focus:outline-none placeholder:text-cream/30"
             />
           </div>
