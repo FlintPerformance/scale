@@ -299,9 +299,10 @@ export default function Circle() {
       const loggedToday = allWeights.some(w => w.date === today);
       const recentDays = allWeights.slice(0, 7).reverse();
       const color = member.profiles?.graph_color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+      const avg7 = last7.length > 0 ? last7.reduce((s, w) => s + w.weight, 0) / last7.length : null;
 
       return {
-        ...member, latest, streak, totalEntries, change7, change30,
+        ...member, latest, streak, avg7, change7, change30,
         loggedToday, recentDays, isYou: member.user_id === user.id, color,
       };
     }).sort((a, b) => b.streak - a.streak);
@@ -600,9 +601,12 @@ export default function Circle() {
                         <p className="text-cream/30 text-[9px]">days</p>
                       </div>
                       <div className="bg-surface-mid p-2.5 text-center">
-                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">Entries</p>
-                        <p className="font-display text-lg text-cream">{member.totalEntries}</p>
-                        <p className="text-cream/30 text-[9px]">total</p>
+                        <p className="text-cream/40 text-[9px] uppercase tracking-wider">7d Avg</p>
+                        {member.avg7 ? (
+                          <>
+                            <p className="font-display text-lg text-cream">{formatWeight(member.avg7, unit)}</p>
+                          </>
+                        ) : <p className="text-cream/20 text-xs mt-1">--</p>}
                       </div>
                       <div className="bg-surface-mid p-2.5 text-center">
                         <p className="text-cream/40 text-[9px] uppercase tracking-wider">7 Day</p>
