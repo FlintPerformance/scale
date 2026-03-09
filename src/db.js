@@ -61,6 +61,17 @@ export async function deleteGoal(id) {
   await db.delete('goals', id);
 }
 
+// Circle cache
+export async function saveCircleCache(userId, data) {
+  const db = await getDB();
+  await db.put('circles', { id: userId, ...data, updatedAt: Date.now() });
+}
+
+export async function getCircleCache(userId) {
+  const db = await getDB();
+  return db.get('circles', userId);
+}
+
 // Export/Import
 export async function exportAllDB() {
   const db = await getDB();

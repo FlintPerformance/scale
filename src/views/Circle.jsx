@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppData, useAppActions } from '../App';
 import { supabase } from '../supabase';
 import { formatWeight, formatDateShort, formatDate, getWeightChange, getStreak, generateId, todayStr, daysAgo, localDateStr, aggregateDaily, sanitizeText } from '../utils';
+import { saveCircleCache, getCircleCache } from '../db';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import Avatar from '../components/Avatar';
 
@@ -41,8 +42,23 @@ export default function Circle() {
   const [feedPage, setFeedPage] = useState(1);
   const FEED_PAGE_SIZE = 30;
 
+  // Load cached circle data from IndexedDB on mount
+  useEffect(() => {
+    let cancelled = false;
+    getCircleCache(user.id).then(cached => {
+      if (cancelled || !cached) return;
+      setCircles(cached.circles || []);
+      setMembers(cached.members || []);
+      setFeed(cached.feed || []);
+      setReactions(cached.reactions || {});
+      setPredictions(cached.predictions || []);
+      setPredictionVotes(cached.predictionVotes || {});
+      setLoading(false);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [user.id]);
+
   const loadCircleData = useCallback(async () => {
-    setLoading(true);
     try {
       const { data: memberRows } = await supabase
         .from('circle_members')
@@ -88,13 +104,13 @@ export default function Circle() {
 
       setMembers(membersWithProfiles);
 
+      let reactionMap = {};
       const entryIds = sharedWeights.map(w => w.id);
       if (entryIds.length) {
         const { data: cheerData } = await supabase
           .from('cheers')
           .select('entry_id, user_id, emoji')
           .in('entry_id', entryIds);
-        const reactionMap = {};
         (cheerData || []).forEach(c => {
           if (!reactionMap[c.entry_id]) reactionMap[c.entry_id] = [];
           reactionMap[c.entry_id].push({ user_id: c.user_id, emoji: c.emoji || '🔥' });
@@ -112,13 +128,13 @@ export default function Circle() {
       setPredictions(predictionData || []);
 
       // Load votes for all predictions
+      let voteMap = {};
       const predictionIds = (predictionData || []).map(p => p.id);
       if (predictionIds.length) {
         const { data: voteData } = await supabase
           .from('prediction_votes')
           .select('prediction_id, user_id, vote')
           .in('prediction_id', predictionIds);
-        const voteMap = {};
         (voteData || []).forEach(v => {
           if (!voteMap[v.prediction_id]) voteMap[v.prediction_id] = [];
           voteMap[v.prediction_id].push(v);
@@ -154,6 +170,16 @@ export default function Circle() {
       }));
 
       setFeed(feedItems);
+
+      // Cache to IndexedDB for instant load next time
+      saveCircleCache(user.id, {
+        circles: userCircles,
+        members: membersWithProfiles,
+        feed: feedItems,
+        reactions: reactionMap,
+        predictions: predictionData || [],
+        predictionVotes: voteMap || {},
+      }).catch(() => {});
     } catch (err) {
       console.error('Circle load error:', err);
     } finally {
