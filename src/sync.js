@@ -1,6 +1,14 @@
 import { supabase } from './supabase';
 import * as db from './db';
 
+export async function deleteWeightFromCloud(id) {
+  const { error } = await supabase
+    .from('weight_entries')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export async function pushWeightToCloud(entry) {
   const { error } = await supabase
     .from('weight_entries')

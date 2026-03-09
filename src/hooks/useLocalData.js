@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as db from '../db';
-import { pushWeightToCloud } from '../sync';
+import { pushWeightToCloud, deleteWeightFromCloud } from '../sync';
 import { generateId, todayStr } from '../utils';
 
 export function useLocalData(userId) {
@@ -48,6 +48,7 @@ export function useLocalData(userId) {
 
   const removeWeight = useCallback(async (id) => {
     await db.deleteWeight(id);
+    deleteWeightFromCloud(id).catch(err => console.error('Failed to delete weight from cloud:', err));
     await reload();
   }, [reload]);
 
