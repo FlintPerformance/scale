@@ -43,25 +43,49 @@ export default function Circle() {
 
       const circleIds = userCircles.map(c => c.id);
 
-      const { data: allMembers } = await supabase
+      const { data: allMembers, error: membersErr } = await supabase
         .from('circle_members')
-        .select('user_id, circle_id, role, profiles(display_name, avatar_url)')
+        .select('user_id, circle_id, role')
         .in('circle_id', circleIds);
 
-      setMembers(allMembers || []);
+      if (membersErr) console.error('Members query error:', membersErr);
 
       const memberIds = [...new Set((allMembers || []).map(m => m.user_id))];
 
+      // Fetch profiles separately (no direct FK from circle_members to profiles)
+      let profileRows = [];
+      if (memberIds.length > 0) {
+        const { data: pData } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .in('id', memberIds);
+        profileRows = pData || [];
+      }
+      const profileById = {};
+      profileRows.forEach(p => { profileById[p.id] = p; });
+
+      const membersWithProfiles = (allMembers || []).map(m => ({
+        ...m,
+        profiles: profileById[m.user_id] || { display_name: 'Unknown', avatar_url: null }
+      }));
+
+      setMembers(membersWithProfiles);
+
       // Fetch more entries for richer member stats
-      const { data: sharedWeights } = await supabase
-        .from('weight_entries')
-        .select('*')
-        .in('user_id', memberIds)
-        .order('date', { ascending: false })
-        .limit(200);
+      let sharedWeights = [];
+      if (memberIds.length > 0) {
+        const { data: wData, error: wErr } = await supabase
+          .from('weight_entries')
+          .select('*')
+          .in('user_id', memberIds)
+          .order('date', { ascending: false })
+          .limit(200);
+        if (wErr) console.error('Weight entries query error:', wErr);
+        sharedWeights = wData || [];
+      }
 
       // Load reactions
-      const entryIds = (sharedWeights || []).map(w => w.id);
+      const entryIds = sharedWeights.map(w => w.id);
       if (entryIds.length) {
         const { data: cheerData } = await supabase
           .from('cheers')
@@ -78,13 +102,13 @@ export default function Circle() {
       // Build feed with profile info
       const profileMap = {};
       const avatarMap = {};
-      (allMembers || []).forEach(m => {
+      membersWithProfiles.forEach(m => {
         profileMap[m.user_id] = m.profiles?.display_name || 'Unknown';
         avatarMap[m.user_id] = m.profiles?.avatar_url || null;
       });
 
       // Merge local weights for current user that may not be in cloud yet
-      const cloudIds = new Set((sharedWeights || []).map(w => w.id));
+      const cloudIds = new Set(sharedWeights.map(w => w.id));
       const localOnly = localWeights
         .filter(w => !cloudIds.has(w.id))
         .map(w => ({
@@ -98,7 +122,7 @@ export default function Circle() {
           updated_at: new Date(w.updatedAt).toISOString()
         }));
 
-      const allWeights = [...(sharedWeights || []), ...localOnly]
+      const allWeights = [...sharedWeights, ...localOnly]
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, 200);
 
