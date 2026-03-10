@@ -269,7 +269,9 @@ export default function Circle() {
         if (entry && entry.user_id !== user.id) {
           supabase.functions.invoke('send-reaction-notification', {
             body: { entry_owner_id: entry.user_id, reactor_name: displayName, emoji },
-          }).catch(() => {}); // Silent fail — notification is best-effort
+          }).then(({ error }) => {
+            if (error) console.error('Reaction notification failed:', error);
+          }).catch(err => console.error('Reaction notification error:', err));
         }
       }
       setReactions(prev => {
