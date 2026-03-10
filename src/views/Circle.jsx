@@ -17,7 +17,7 @@ const REACTIONS = [
 const DEFAULT_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#f04a0e'];
 
 export default function Circle() {
-  const { user, unit, weights: localWeights, displayName, pendingInvite } = useAppData();
+  const { user, unit, weights: localWeights, displayName, pendingInvite, view } = useAppData();
   const { showToast, clearPendingInvite } = useAppActions();
   const [tab, setTab] = useState('feed');
   const [circles, setCircles] = useState([]);
@@ -188,6 +188,15 @@ export default function Circle() {
   }, [user.id, localWeights, displayName]);
 
   useEffect(() => { loadCircleData(); }, [loadCircleData]);
+
+  // Refresh feed when user navigates to the circle tab
+  const prevView = React.useRef(view);
+  useEffect(() => {
+    if (view === 'circle' && prevView.current !== 'circle') {
+      loadCircleData();
+    }
+    prevView.current = view;
+  }, [view, loadCircleData]);
 
   useEffect(() => {
     if (!pendingInvite || loading) return;
