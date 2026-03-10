@@ -159,7 +159,7 @@ export default function Circle() {
         }));
 
       const allWeights = [...sharedWeights, ...localOnly]
-        .sort((a, b) => b.date.localeCompare(a.date))
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
         .slice(0, 500);
 
       const feedItems = allWeights.map(w => ({
